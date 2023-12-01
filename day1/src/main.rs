@@ -51,7 +51,7 @@ mod part_two {
             }
         }
 
-        let first_num: u32 = 'first_num: {
+        let first_num: u32 = {
             let maybe_first_num_1 = nums
                 .into_iter()
                 .map(|num| {
@@ -70,19 +70,20 @@ mod part_two {
                 .unwrap();
 
             {
-                if let Some((idx_1, first_num_1)) = maybe_first_num_1 {
-                    if idx_1 < idx_2 {
-                        break 'first_num spelling_to_num(&first_num_1);
-                    } else {
-                        break 'first_num first_num_2.to_string().parse().unwrap();
+                match maybe_first_num_1 {
+                    Some((idx_1, first_num_1)) => {
+                        if idx_1 < idx_2 {
+                            spelling_to_num(&first_num_1)
+                        } else {
+                            first_num_2.to_string().parse().unwrap()
+                        }
                     }
+                    None => first_num_2.to_string().parse().unwrap(),
                 }
-
-                first_num_2.to_string().parse().unwrap()
             }
         };
 
-        let last_num: u32 = 'last_num: {
+        let last_num: u32 = {
             let nums_reversed = nums.map(|v| v.chars().rev().collect::<String>());
 
             let maybe_last_num_1 = nums_reversed
@@ -115,14 +116,16 @@ mod part_two {
                 .unwrap();
 
             {
-                if let Some((idx_1, last_num_1)) = maybe_last_num_1 {
-                    if idx_1 < idx_2 {
-                        break 'last_num spelling_to_num(&last_num_1);
-                    } else {
-                        break 'last_num last_num_2.to_string().parse().unwrap();
+                match maybe_last_num_1 {
+                    Some((idx_1, last_num_1)) => {
+                        if idx_1 < idx_2 {
+                            spelling_to_num(&last_num_1)
+                        } else {
+                            last_num_2.to_string().parse().unwrap()
+                        }
                     }
+                    None => last_num_2.to_string().parse().unwrap(),
                 }
-                last_num_2.to_string().parse().unwrap()
             }
         };
 
