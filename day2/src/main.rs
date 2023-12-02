@@ -1,6 +1,5 @@
-#![allow(unused)]
-
 mod part_one {
+    use super::parse::*;
     use super::*;
 
     pub fn part_one() -> u32 {
@@ -8,24 +7,24 @@ mod part_one {
     }
 
     pub fn id_if_possible(v: String) -> u32 {
-        use super::parse::*;
-
         let (id, games) = process_line(&v);
 
-        for game in games {
-            for CountColor { count, color } in game {
-                if (color == "red" && count <= 12)
-                    || (color == "green" && count <= 13)
-                    || (color == "blue" && count <= 14)
-                {
-                    continue;
-                }
+        let possible = games
+            .into_iter()
+            .map(|game| {
+                game.into_iter().all(|CountColor { count, color }| {
+                    (color == "red" && count <= 12)
+                        || (color == "green" && count <= 13)
+                        || (color == "blue" && count <= 14)
+                })
+            })
+            .all(std::convert::identity);
 
-                return 0;
-            }
+        if possible {
+            id
+        } else {
+            0
         }
-
-        id
     }
 
     #[cfg(test)]
@@ -38,6 +37,7 @@ mod part_one {
 }
 
 mod part_two {
+    use super::parse::*;
     use super::*;
 
     pub fn part_two() -> u32 {
@@ -45,9 +45,7 @@ mod part_two {
     }
 
     pub fn mult_pow(v: String) -> u32 {
-        use super::parse::*;
-
-        let (id, games) = process_line(&v);
+        let (_id, games) = process_line(&v);
 
         let mut color_count = std::collections::HashMap::<_, u32>::new();
 
