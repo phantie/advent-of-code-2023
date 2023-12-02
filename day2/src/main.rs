@@ -93,8 +93,9 @@ mod parse {
         pub color: &'a str,
     }
 
+    type Id = u32;
     type Game<'a> = Vec<CountColor<'a>>;
-    type GameSeq<'a> = Vec<Game<'a>>;
+    type Games<'a> = Vec<Game<'a>>;
 
     fn parse_count_color(input: &str) -> IResult<&str, CountColor> {
         let (input, count) = complete::u32(input)?;
@@ -108,12 +109,12 @@ mod parse {
         Ok((input, result))
     }
 
-    fn parse_games(input: &str) -> IResult<&str, GameSeq> {
+    fn parse_games(input: &str) -> IResult<&str, Games> {
         let (input, result) = separated_list1(tag("; "), parse_game)(input)?;
         Ok((input, result))
     }
 
-    fn parse_line(input: &str) -> IResult<&str, (u32, GameSeq)> {
+    fn parse_line(input: &str) -> IResult<&str, (Id, Games)> {
         let (input, _) = tag("Game ")(input)?;
         let (input, id) = complete::u32(input)?;
         let (input, _) = tag(": ")(input)?;
@@ -121,64 +122,58 @@ mod parse {
         Ok((input, (id, game)))
     }
 
-    pub fn process_line(input: &str) -> (u32, GameSeq) {
+    pub fn process_line(input: &str) -> (Id, Games) {
         let (_, result) = parse_line(input).unwrap();
         result
     }
 
     #[cfg(test)]
-    mod tests {
-        #[test]
-        fn test_parse_line() {
-            use super::CountColor;
+    #[test]
+    fn test_parse_line() {
+        let (remaining, (id, games)) =
+            parse_line("Game 22: 3 red, 1 blue; 3 green, 1 red, 1 blue; 7 green, 2 blue").unwrap();
 
-            let (remaining, (id, games)) = super::parse_line(
-                "Game 22: 3 red, 1 blue; 3 green, 1 red, 1 blue; 7 green, 2 blue",
-            )
-            .unwrap();
+        assert!(remaining.is_empty());
 
-            assert!(remaining.is_empty());
-
-            assert_eq!(id, 22);
-            assert_eq!(
-                games,
+        assert_eq!(id, 22);
+        assert_eq!(
+            games,
+            vec![
                 vec![
-                    vec![
-                        CountColor {
-                            count: 3,
-                            color: "red",
-                        },
-                        CountColor {
-                            count: 1,
-                            color: "blue",
-                        },
-                    ],
-                    vec![
-                        CountColor {
-                            count: 3,
-                            color: "green",
-                        },
-                        CountColor {
-                            count: 1,
-                            color: "red",
-                        },
-                        CountColor {
-                            count: 1,
-                            color: "blue",
-                        },
-                    ],
-                    vec![
-                        CountColor {
-                            count: 7,
-                            color: "green",
-                        },
-                        CountColor {
-                            count: 2,
-                            color: "blue",
-                        },
-                    ],
-                ]
-            );
-        }
+                    CountColor {
+                        count: 3,
+                        color: "red",
+                    },
+                    CountColor {
+                        count: 1,
+                        color: "blue",
+                    },
+                ],
+                vec![
+                    CountColor {
+                        count: 3,
+                        color: "green",
+                    },
+                    CountColor {
+                        count: 1,
+                        color: "red",
+                    },
+                    CountColor {
+                        count: 1,
+                        color: "blue",
+                    },
+                ],
+                vec![
+                    CountColor {
+                        count: 7,
+                        color: "green",
+                    },
+                    CountColor {
+                        count: 2,
+                        color: "blue",
+                    },
+                ],
+            ]
+        );
     }
 }

@@ -13,13 +13,9 @@ mod part_one {
     }
 
     #[cfg(test)]
-    mod tests {
-        use super::*;
-
-        #[test]
-        fn test_part_one() {
-            assert_eq!(part_one(), 53194);
-        }
+    #[test]
+    fn test_part_one() {
+        assert_eq!(part_one(), 53194);
     }
 }
 
@@ -133,23 +129,19 @@ mod part_two {
     }
 
     #[cfg(test)]
-    mod tests {
-        use super::*;
+    #[test]
+    fn test_part_two() {
+        assert_eq!(extract_real_calibration_value("46threevqs8114".into()), 44);
+        assert_eq!(
+            extract_real_calibration_value("sevenntgvnrrqfvxh2ttnkgffour8fiveone".into()),
+            71
+        );
+        assert_eq!(
+            extract_real_calibration_value("fzrpfhbfvj6dbxbtfs7twofksfbshrzkdeightwoqg".into()),
+            62
+        );
 
-        #[test]
-        fn test_part_two() {
-            assert_eq!(extract_real_calibration_value("46threevqs8114".into()), 44);
-            assert_eq!(
-                extract_real_calibration_value("sevenntgvnrrqfvxh2ttnkgffour8fiveone".into()),
-                71
-            );
-            assert_eq!(
-                extract_real_calibration_value("fzrpfhbfvj6dbxbtfs7twofksfbshrzkdeightwoqg".into()),
-                62
-            );
-
-            assert_eq!(part_two(), 54249);
-        }
+        assert_eq!(part_two(), 54249);
     }
 }
 
