@@ -8,33 +8,16 @@ mod part_one {
     }
 
     pub fn id_if_possible(v: String) -> u32 {
-        let mut q = v.split(":");
+        use super::parse::*;
 
-        let p1 = q.next().unwrap();
+        let (id, games) = process_line(&v);
 
-        let id = {
-            let mut q = p1.split(" ");
-            let _ = q.next();
-            q.next().unwrap().parse::<u32>().unwrap()
-        };
-
-        let games = q.next().unwrap();
-
-        for game in games.split(";") {
-            for count_color in game.split(",") {
-                let count_color = count_color.trim();
-                let mut z = count_color.trim().split(" ");
-
-                let count = z.next().unwrap().parse::<u32>().unwrap();
-                let color = z.next().unwrap();
-
-                if color == "red" && count <= 12 {
-                    continue;
-                }
-                if color == "green" && count <= 13 {
-                    continue;
-                }
-                if color == "blue" && count <= 14 {
+        for game in games {
+            for CountColor { count, color } in game {
+                if (color == "red" && count <= 12)
+                    || (color == "green" && count <= 13)
+                    || (color == "blue" && count <= 14)
+                {
                     continue;
                 }
 
@@ -62,20 +45,14 @@ mod part_two {
     }
 
     pub fn mult_pow(v: String) -> u32 {
-        let mut q = v.split(":");
+        use super::parse::*;
 
-        let _p1 = q.next().unwrap();
+        let (id, games) = process_line(&v);
 
-        let games = q.next().unwrap();
+        let mut color_count = std::collections::HashMap::<_, u32>::new();
 
-        let mut color_count = std::collections::HashMap::<&str, u32>::new();
-
-        for game in games.split(";") {
-            for count_color in game.split(",") {
-                let mut z = count_color.trim().split(" ");
-                let count = z.next().unwrap().parse::<u32>().unwrap();
-                let color = z.next().unwrap();
-
+        for game in games {
+            for CountColor { count, color } in game {
                 color_count
                     .entry(color)
                     .and_modify(|v| {
@@ -108,7 +85,9 @@ fn read_input() -> utils::ReadLines {
 }
 
 mod parse {
-    use nom::{branch::alt, bytes::complete::tag, character, multi::separated_list1, IResult};
+    use nom::{
+        branch::alt, bytes::complete::tag, character::complete, multi::separated_list1, IResult,
+    };
 
     #[derive(Debug, PartialEq)]
     pub struct CountColor<'a> {
@@ -120,7 +99,7 @@ mod parse {
     type GameSeq<'a> = Vec<Game<'a>>;
 
     fn parse_count_color(input: &str) -> IResult<&str, CountColor> {
-        let (input, count) = character::complete::u32(input)?;
+        let (input, count) = complete::u32(input)?;
         let (input, _) = tag(" ")(input)?;
         let (input, color) = alt((tag("red"), tag("green"), tag("blue")))(input)?;
         Ok((input, CountColor { count, color }))
@@ -136,12 +115,17 @@ mod parse {
         Ok((input, result))
     }
 
-    pub fn parse_line(input: &str) -> IResult<&str, (u32, GameSeq)> {
+    fn parse_line(input: &str) -> IResult<&str, (u32, GameSeq)> {
         let (input, _) = tag("Game ")(input)?;
-        let (input, id) = character::complete::u32(input)?;
+        let (input, id) = complete::u32(input)?;
         let (input, _) = tag(": ")(input)?;
         let (input, game) = parse_games(input)?;
         Ok((input, (id, game)))
+    }
+
+    pub fn process_line(input: &str) -> (u32, GameSeq) {
+        let (_, result) = parse_line(input).unwrap();
+        result
     }
 
     #[cfg(test)]
