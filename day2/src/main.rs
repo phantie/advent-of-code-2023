@@ -28,11 +28,9 @@ mod part_one {
     }
 
     #[cfg(test)]
-    mod tests {
-        #[test]
-        fn part_one() {
-            assert_eq!(super::part_one(), 2617);
-        }
+    #[test]
+    fn test_part_one() {
+        assert_eq!(part_one(), 2617);
     }
 }
 
@@ -64,11 +62,9 @@ mod part_two {
     }
 
     #[cfg(test)]
-    mod tests {
-        #[test]
-        fn part_two() {
-            assert_eq!(super::part_two(), 59795);
-        }
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 59795);
     }
 }
 
