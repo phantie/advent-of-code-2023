@@ -10,19 +10,19 @@ mod part_one {
         )
     }
 
-    fn find(rows: Vec<Vec<Cell>>) -> u32 {
-        let rows = pad_space(rows);
+    fn find(space: Space) -> u32 {
+        let space = pad_space(space);
 
         let mut total = 0;
 
-        for (i, row) in rows.iter().enumerate() {
-            // padded empty rows
-            if i == 0 || i == rows.len() - 1 {
+        for (i, row) in space.iter().enumerate() {
+            // padded empty rows and columns
+            if i == 0 || i == space.len() - 1 {
                 continue;
             }
 
-            let prev_row = &rows[i - 1];
-            let next_row = &rows[i + 1];
+            let prev_row = &space[i - 1];
+            let next_row = &space[i + 1];
 
             for (i, num) in extract_nums(row) {
                 let num_len = num_len(num);
@@ -61,19 +61,19 @@ mod part_two {
         )
     }
 
-    fn find(rows: Vec<Vec<Cell>>) -> u32 {
-        let rows = pad_space(rows);
+    fn find(space: Space) -> u32 {
+        let space = pad_space(space);
 
         let mut total = 0;
 
-        for (i, row) in rows.iter().enumerate() {
-            // padded empty rows
-            if i == 0 || i == rows.len() - 1 {
+        for (i, row) in space.iter().enumerate() {
+            // padded empty rows and columns
+            if i == 0 || i == space.len() - 1 {
                 continue;
             }
 
-            let prev_row = &rows[i - 1];
-            let next_row = &rows[i + 1];
+            let prev_row = &space[i - 1];
+            let next_row = &space[i + 1];
 
             let symbols = extract_syms(row);
             let numbers = extract_nums(row);
@@ -118,6 +118,9 @@ mod part_two {
 }
 
 mod imports {
+    pub type Space = Vec<Row>;
+    pub type Row = Vec<Cell>;
+
     #[derive(strum::EnumIs, Clone)]
     pub enum Cell {
         Number(u32),
@@ -125,7 +128,7 @@ mod imports {
         Empty,
     }
 
-    pub fn parse_line(value: String) -> Vec<Cell> {
+    pub fn parse_line(value: String) -> Row {
         std::iter::once(Cell::Empty)
             .chain(value.chars().map(|c| match c {
                 c if c.is_numeric() => Cell::Number(c.to_string().parse().unwrap()),
@@ -136,14 +139,14 @@ mod imports {
             .collect()
     }
 
-    pub fn pad_space(rows: Vec<Vec<Cell>>) -> Vec<Vec<Cell>> {
+    pub fn pad_space(space: Space) -> Space {
         // pad empty with empty rows and columns to ease indexing
         //
-        let row_len = rows[0].len();
+        let row_len = space[0].len();
         let empty_row = (0..row_len).map(|_| Cell::Empty).collect::<Vec<_>>();
 
         std::iter::once(empty_row.clone())
-            .chain(rows)
+            .chain(space)
             .chain(std::iter::once(empty_row.clone()))
             .collect()
     }
@@ -152,7 +155,7 @@ mod imports {
         (num.checked_ilog10().unwrap_or(0) + 1) as usize
     }
 
-    pub fn extract_syms(row: &Vec<Cell>) -> Vec<usize> {
+    pub fn extract_syms(row: &Row) -> Vec<usize> {
         row.into_iter()
             .enumerate()
             .filter(|(_i, cell)| cell.is_symbol())
@@ -160,7 +163,7 @@ mod imports {
             .collect()
     }
 
-    pub fn extract_nums(row: &Vec<Cell>) -> Vec<(usize, u32)> {
+    pub fn extract_nums(row: &Row) -> Vec<(usize, u32)> {
         let mut numbers = vec![];
 
         let mut finished_num = true;
