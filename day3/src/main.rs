@@ -2,15 +2,15 @@ mod part_one {
     use super::imports::*;
 
     pub fn part_one() -> u32 {
-        find(
+        calc(
             super::read_input()
                 .map(Result::unwrap)
                 .map(parse_line)
-                .collect::<Vec<_>>(),
+                .collect::<Space>(),
         )
     }
 
-    fn find(space: Space) -> u32 {
+    fn calc(space: Space) -> u32 {
         let space = pad_space(space);
 
         let mut total = 0;
@@ -53,15 +53,15 @@ mod part_two {
     use super::imports::*;
 
     pub fn part_two() -> u32 {
-        find(
+        calc(
             super::read_input()
                 .map(Result::unwrap)
                 .map(parse_line)
-                .collect::<Vec<_>>(),
+                .collect::<Space>(),
         )
     }
 
-    fn find(space: Space) -> u32 {
+    fn calc(space: Space) -> u32 {
         let space = pad_space(space);
 
         let mut total = 0;
