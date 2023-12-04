@@ -2,16 +2,15 @@ mod part_one {
     pub fn part_one() -> u32 {
         super::read_input()
             .map(Result::unwrap)
-            .map(calc)
+            .map(parse::process_line)
+            .map(calc_points)
             .sum::<u32>()
     }
 
     use super::parse;
 
-    fn calc(value: String) -> u32 {
-        let (_id, (winning, given)) = parse::process_line(value);
-
-        let count = given.iter().filter(|v| winning.contains(*v)).count() as u32;
+    fn calc_points(card: parse::Card) -> u32 {
+        let count = card.winning_count();
 
         if count == 0 || count == 1 {
             count
@@ -40,24 +39,23 @@ mod part_two {
     use super::parse;
 
     fn calc(cards: Vec<parse::Card>) -> u32 {
-        let total = cards.len();
+        let total = cards.len() as u32;
 
         let mut copies = std::collections::HashMap::<u32, u32>::new();
 
         for card in cards.iter() {
-            let (id, (winning, given)) = card;
+            let id = card.id;
 
-            let winning_nums_count = given.iter().filter(|v| winning.contains(*v)).count() as u32;
+            let winning_count = card.winning_count();
 
-            #[allow(unused_parens)]
-            for _ in (0..(*copies.get(id).unwrap_or(&0) + 1)) {
-                for id in ((*id + 1)..(*id + 1 + winning_nums_count)) {
-                    copies.entry(id).and_modify(|v| *v = (*v) + 1).or_insert(1);
+            for _ in 0..*copies.get(&id).unwrap_or(&0) + 1 {
+                for id in (id + 1)..(id + 1 + winning_count) {
+                    copies.entry(id).and_modify(|v| *v += 1).or_insert(1);
                 }
             }
         }
 
-        total as u32 + copies.values().sum::<u32>()
+        total + copies.values().sum::<u32>()
     }
 
     #[cfg(test)]
@@ -76,7 +74,23 @@ mod parse {
     use nom::{bytes::complete::tag, character::complete, multi::separated_list1, IResult};
 
     type Id = u32;
-    pub type Card = (Id, (Vec<u32>, Vec<u32>));
+
+    #[derive(Debug)]
+    pub struct Card {
+        pub id: Id,
+        pub winning_nums: WinningNums,
+        pub given_nums: GivenNums,
+    }
+
+    impl Card {
+        pub fn winning_count(&self) -> u32 {
+            self.given_nums
+                .iter()
+                .filter(|v| self.winning_nums.contains(*v))
+                .count() as u32
+        }
+    }
+
     type Nums = Vec<u32>;
     type WinningNums = Nums;
     type GivenNums = Nums;
@@ -94,23 +108,45 @@ mod parse {
         Ok((input, (winning, given)))
     }
 
-    fn parse_line(input: &str) -> IResult<&str, (Id, (WinningNums, GivenNums))> {
+    fn parse_line(input: &str) -> IResult<&str, Card> {
         let (input, _) = tag("Card")(input)?;
         let (input, _) = complete::space1(input)?;
         let (input, id) = complete::u32(input)?;
         let (input, _) = tag(":")(input)?;
         let (input, _) = complete::space1(input)?;
-        let (input, nums) = parse_num_sets(input)?;
-        Ok((input, (id, nums)))
+        let (input, (winning_nums, given_nums)) = parse_num_sets(input)?;
+        Ok((
+            input,
+            Card {
+                id,
+                winning_nums,
+                given_nums,
+            },
+        ))
     }
 
     pub fn process_line(input: String) -> Card {
         let (_, card) = parse_line(&input).unwrap();
         card
     }
+
+    #[cfg(test)]
+    #[test]
+    fn test_parse_line() {
+        let (remaining, card) =
+            parse_line("Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1".into()).unwrap();
+        assert!(remaining.is_empty());
+        assert_eq!(card.id, 3);
+        assert_eq!(card.winning_nums, vec![1, 21, 53, 59, 44]);
+        assert_eq!(card.given_nums, vec![69, 82, 63, 72, 16, 21, 14, 1]);
+    }
 }
 
 fn main() {
+    dbg!(parse::process_line(
+        "Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1".into()
+    ));
+
     let result = part_one::part_one();
     println!("result: {result}");
     let result = part_two::part_two();
