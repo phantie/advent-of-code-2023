@@ -42,7 +42,7 @@ mod part_two {
     fn calc(cards: Vec<parse::Card>) -> u32 {
         let total = cards.len();
 
-        let mut q = std::collections::HashMap::<u32, u32>::new();
+        let mut copies = std::collections::HashMap::<u32, u32>::new();
 
         for card in cards.iter() {
             let (id, (winning, given)) = card;
@@ -50,14 +50,14 @@ mod part_two {
             let winning_nums_count = given.iter().filter(|v| winning.contains(*v)).count() as u32;
 
             #[allow(unused_parens)]
-            for _ in (0..(*q.get(id).unwrap_or(&0) + 1)) {
+            for _ in (0..(*copies.get(id).unwrap_or(&0) + 1)) {
                 for id in ((*id + 1)..(*id + 1 + winning_nums_count)) {
-                    q.entry(id).and_modify(|v| *v = (*v) + 1).or_insert(1);
+                    copies.entry(id).and_modify(|v| *v = (*v) + 1).or_insert(1);
                 }
             }
         }
 
-        total as u32 + q.values().sum::<u32>()
+        total as u32 + copies.values().sum::<u32>()
     }
 
     #[cfg(test)]
@@ -73,13 +73,7 @@ fn read_input() -> utils::ReadLines {
 }
 
 mod parse {
-    use nom::{
-        branch::alt,
-        bytes::complete::{tag, take_while1},
-        character::complete,
-        multi::separated_list1,
-        IResult,
-    };
+    use nom::{bytes::complete::tag, character::complete, multi::separated_list1, IResult};
 
     type Id = u32;
     pub type Card = (Id, (Vec<u32>, Vec<u32>));
@@ -88,32 +82,30 @@ mod parse {
     type GivenNums = Nums;
 
     fn parse_nums(input: &str) -> IResult<&str, Nums> {
-        let (input, result) = separated_list1(alt((tag(" "), tag("  "))), complete::u32)(input)?;
+        let (input, result) = separated_list1(complete::space1, complete::u32)(input)?;
         Ok((input, result))
     }
 
     fn parse_num_sets(input: &str) -> IResult<&str, (WinningNums, GivenNums)> {
         let (input, winning) = parse_nums(input)?;
         let (input, _) = tag(" | ")(input)?;
+        let (input, _) = complete::space0(input)?;
         let (input, given) = parse_nums(input)?;
         Ok((input, (winning, given)))
     }
 
     fn parse_line(input: &str) -> IResult<&str, (Id, (WinningNums, GivenNums))> {
         let (input, _) = tag("Card")(input)?;
-        let (input, _) = take_while1(|v| v == ' ')(input)?;
+        let (input, _) = complete::space1(input)?;
         let (input, id) = complete::u32(input)?;
-        let (input, _) = alt((tag(":  "), tag(": ")))(input)?;
+        let (input, _) = tag(":")(input)?;
+        let (input, _) = complete::space1(input)?;
         let (input, nums) = parse_num_sets(input)?;
         Ok((input, (id, nums)))
     }
 
     pub fn process_line(input: String) -> Card {
-        let input = input.replace("  ", " ");
-        let i = input.as_str();
-
-        let (_, card) = parse_line(i).unwrap();
-
+        let (_, card) = parse_line(&input).unwrap();
         card
     }
 }
