@@ -39,8 +39,6 @@ mod part_two {
     }
 
     fn calc(cards: Vec<Card>) -> u32 {
-        let total = cards.len() as u32;
-
         let mut copies = std::collections::HashMap::<u32, u32>::new();
 
         for card in cards.iter() {
@@ -48,14 +46,13 @@ mod part_two {
 
             let winning_count = card.winning_count();
 
-            for _ in 0..*copies.get(&id).unwrap_or(&0) + 1 {
-                for id in (id + 1)..(id + 1 + winning_count) {
-                    copies.entry(id).and_modify(|v| *v += 1).or_insert(1);
-                }
+            let inc = *copies.get(&id).unwrap_or(&0) + 1;
+            for id in (id + 1)..(id + 1 + winning_count) {
+                copies.entry(id).and_modify(|v| *v += inc).or_insert(inc);
             }
         }
 
-        total + copies.values().sum::<u32>()
+        cards.len() as u32 + copies.values().sum::<u32>()
     }
 
     #[cfg(test)]
@@ -84,20 +81,17 @@ mod parse {
 
     impl Card {
         pub fn winning_count(&self) -> u32 {
-            self.given_nums
-                .iter()
-                .filter(|v| self.winning_nums.contains(*v))
-                .count() as u32
+            self.given_nums.intersection(&self.winning_nums).count() as _
         }
     }
 
-    type Nums = Vec<u32>;
+    type Nums = std::collections::HashSet<u32>;
     type WinningNums = Nums;
     type GivenNums = Nums;
 
     fn parse_nums(input: &str) -> IResult<&str, Nums> {
         let (input, result) = separated_list1(complete::space1, complete::u32)(input)?;
-        Ok((input, result))
+        Ok((input, result.into_iter().collect()))
     }
 
     fn parse_num_sets(input: &str) -> IResult<&str, (WinningNums, GivenNums)> {
@@ -137,8 +131,11 @@ mod parse {
             parse_line("Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1".into()).unwrap();
         assert!(remaining.is_empty());
         assert_eq!(card.id, 3);
-        assert_eq!(card.winning_nums, vec![1, 21, 53, 59, 44]);
-        assert_eq!(card.given_nums, vec![69, 82, 63, 72, 16, 21, 14, 1]);
+        assert_eq!(card.winning_nums, [1, 21, 53, 59, 44].into_iter().collect());
+        assert_eq!(
+            card.given_nums,
+            [69, 82, 63, 72, 16, 21, 14, 1].into_iter().collect()
+        );
     }
 }
 
