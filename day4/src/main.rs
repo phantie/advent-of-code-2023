@@ -11,34 +11,30 @@ mod part_one {
     fn calc(value: String) -> u32 {
         let (_id, (winning, given)) = parse::process_line(value);
 
-        let q = given.iter().filter(|v| winning.contains(*v)).count() as u32;
+        let count = given.iter().filter(|v| winning.contains(*v)).count() as u32;
 
-        if q == 0 {
-            0
-        } else if q == 1 {
-            1
+        if count == 0 || count == 1 {
+            count
         } else {
-            2u32.pow(q - 1)
+            2u32.pow(count - 1)
         }
     }
 
     #[cfg(test)]
     #[test]
     fn test_part_one() {
-        assert_eq!(part_one(), 535351);
+        assert_eq!(part_one(), 18653);
     }
 }
 
 mod part_two {
     pub fn part_two() -> u32 {
-        let q = calc(
+        calc(
             super::read_input()
                 .map(Result::unwrap)
                 .map(parse::process_line)
                 .collect(),
-        );
-        dbg!(q);
-        q
+        )
     }
 
     use super::parse;
@@ -62,6 +58,12 @@ mod part_two {
         }
 
         total as u32 + q.values().sum::<u32>()
+    }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 5921508);
     }
 }
 
