@@ -1,15 +1,15 @@
 mod part_one {
+    use super::parse::{process_line, Card};
+
     pub fn part_one() -> u32 {
         super::read_input()
             .map(Result::unwrap)
-            .map(parse::process_line)
+            .map(process_line)
             .map(calc_points)
             .sum::<u32>()
     }
 
-    use super::parse;
-
-    fn calc_points(card: parse::Card) -> u32 {
+    fn calc_points(card: Card) -> u32 {
         let count = card.winning_count();
 
         if count == 0 || count == 1 {
@@ -27,18 +27,18 @@ mod part_one {
 }
 
 mod part_two {
+    use super::parse::{process_line, Card};
+
     pub fn part_two() -> u32 {
         calc(
             super::read_input()
                 .map(Result::unwrap)
-                .map(parse::process_line)
+                .map(process_line)
                 .collect(),
         )
     }
 
-    use super::parse;
-
-    fn calc(cards: Vec<parse::Card>) -> u32 {
+    fn calc(cards: Vec<Card>) -> u32 {
         let total = cards.len() as u32;
 
         let mut copies = std::collections::HashMap::<u32, u32>::new();
@@ -143,10 +143,6 @@ mod parse {
 }
 
 fn main() {
-    dbg!(parse::process_line(
-        "Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1".into()
-    ));
-
     let result = part_one::part_one();
     println!("result: {result}");
     let result = part_two::part_two();
