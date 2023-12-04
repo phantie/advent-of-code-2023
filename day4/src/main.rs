@@ -83,38 +83,38 @@ mod parse {
 
     type Id = u32;
     pub type Card = (Id, (Vec<u32>, Vec<u32>));
+    type Nums = Vec<u32>;
+    type WinningNums = Nums;
+    type GivenNums = Nums;
 
-    fn parse_game(input: &str) -> IResult<&str, Vec<u32>> {
+    fn parse_nums(input: &str) -> IResult<&str, Nums> {
         let (input, result) = separated_list1(alt((tag(" "), tag("  "))), complete::u32)(input)?;
         Ok((input, result))
     }
 
-    fn parse_games(input: &str) -> IResult<&str, Vec<Vec<u32>>> {
-        let (input, result) = separated_list1(tag(" | "), parse_game)(input)?;
-        Ok((input, result))
+    fn parse_num_sets(input: &str) -> IResult<&str, (WinningNums, GivenNums)> {
+        let (input, winning) = parse_nums(input)?;
+        let (input, _) = tag(" | ")(input)?;
+        let (input, given) = parse_nums(input)?;
+        Ok((input, (winning, given)))
     }
 
-    fn parse_line(input: &str) -> IResult<&str, (Id, Vec<Vec<u32>>)> {
+    fn parse_line(input: &str) -> IResult<&str, (Id, (WinningNums, GivenNums))> {
         let (input, _) = tag("Card")(input)?;
         let (input, _) = take_while1(|v| v == ' ')(input)?;
         let (input, id) = complete::u32(input)?;
         let (input, _) = alt((tag(":  "), tag(": ")))(input)?;
-        let (input, game) = parse_games(input)?;
-        Ok((input, (id, game)))
+        let (input, nums) = parse_num_sets(input)?;
+        Ok((input, (id, nums)))
     }
 
     pub fn process_line(input: String) -> Card {
         let input = input.replace("  ", " ");
         let i = input.as_str();
 
-        let (_, (id, game)) = parse_line(i).unwrap();
+        let (_, card) = parse_line(i).unwrap();
 
-        let mut q = game.into_iter();
-
-        let winning = q.next().unwrap();
-        let given = q.next().unwrap();
-
-        (id, (winning, given))
+        card
     }
 }
 
