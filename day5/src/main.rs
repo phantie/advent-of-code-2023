@@ -24,7 +24,7 @@ mod part_one {
     #[cfg(test)]
     #[test]
     fn test_part_one() {
-        assert_eq!(part_one(), 18653);
+        assert_eq!(part_one(), 993500720);
     }
 }
 
@@ -34,17 +34,21 @@ fn read_input() -> utils::ReadLines {
 }
 
 fn main() {
-    let result = part_one::part_one();
+    // let result = part_one::part_one();
+    // println!("result: {result}");
+    let result = part_two::part_two();
     println!("result: {result}");
 }
 
 mod parse {
+    use std::ops::Range;
+
     use nom::{bytes::complete::tag, character::complete, multi::separated_list1, IResult};
 
     type Dest = i64;
     type Source = i64;
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct Mapping {
         pub dest: Dest,
         pub source: Source,
@@ -53,11 +57,19 @@ mod parse {
 
     impl Mapping {
         pub fn source_to_dest(&self, source: Source) -> Option<Dest> {
-            if (self.source..self.source + self.range).contains(&source) {
+            if self.source_range().contains(&source) {
                 Some(source + (self.dest - self.source))
             } else {
                 None
             }
+        }
+
+        pub fn source_range(&self) -> Range<i64> {
+            self.source..self.source + self.range
+        }
+
+        pub fn dest_range(&self) -> Range<i64> {
+            self.dest..self.dest + self.range
         }
     }
 
@@ -88,7 +100,7 @@ mod parse {
 
     #[derive(Debug)]
     pub struct Mappings {
-        inner: Vec<Mapping>,
+        pub inner: Vec<Mapping>,
     }
 
     impl Mappings {
@@ -109,6 +121,12 @@ mod parse {
                 dest.unwrap().unwrap()
             }
         }
+
+        pub fn from_min(&self) -> Vec<Mapping> {
+            let mut q = self.inner.clone();
+            q.sort_by_key(|mapping| mapping.dest);
+            q
+        }
     }
 
     impl From<Vec<Mapping>> for Mappings {
@@ -126,7 +144,7 @@ mod parse {
         water_to_light: Mappings,
         light_to_temperature: Mappings,
         temperature_to_humidity: Mappings,
-        humidity_to_location: Mappings,
+        pub humidity_to_location: Mappings,
     }
 
     impl Parsed {
@@ -198,4 +216,75 @@ mod parse {
 
 fn input() -> &'static str {
     include_str!("../input.txt")
+}
+
+mod part_two {
+    use super::*;
+
+    use range_ext::intersect::Intersect;
+
+    // dead slow
+    pub fn part_two() -> i64 {
+        // ranges do not overlap
+
+        let (_, parsed) = parse::parse_input(input()).unwrap();
+
+        // for humidity_to_location_range in parsed.humidity_to_location.from_min() {
+        //     let tables_bottom_to_top = {
+        //         let mut q = parsed.flowing();
+        //         q.reverse();
+        //         let mut d = q.into_iter();
+        //         d.next().unwrap();
+        //         d.collect::<Vec<_>>()
+        //     };
+
+        //     for table in tables_bottom_to_top {
+        //         for intersection in table.inner.iter().map(|mapping| {
+        //             mapping
+        //                 .dest_range()
+        //                 .intersect(&humidity_to_location_range.source_range())
+        //         }) {
+        //             match intersection {
+        //                 range_ext::intersect::Intersection::Empty => {}
+        //                 range_ext::intersect::Intersection::Overlap => {}
+        //                 range_ext::intersect::Intersection::Full => {}
+        //             }
+        //         }
+
+        //         // dbg!(q);
+        //         break;
+        //     }
+        // }
+
+        let ranges = parsed
+            .seeds
+            .chunks_exact(2)
+            .map(|chunk| {
+                let (start, range) = (chunk[0], chunk[1]);
+                (start..start + range)
+            })
+            .collect::<Vec<_>>();
+
+        let mut locations = vec![];
+
+        for source in ranges.into_iter().flatten() {
+            let mut dest = source;
+
+            for table in parsed.flowing() {
+                dest = table.source_to_dest(dest);
+            }
+
+            locations.push(dest);
+        }
+
+        locations.into_iter().min().unwrap()
+    }
+
+    #[cfg(test)]
+    #[ignore]
+    #[test]
+    fn test_part_two() {
+        // 993500720
+        assert_eq!(part_two(), 4917124);
+    }
 }
