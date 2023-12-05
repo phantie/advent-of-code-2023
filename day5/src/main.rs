@@ -6,19 +6,18 @@ mod part_one {
     pub fn part_one() -> i64 {
         let (_, parsed) = parse::parse_input(input()).unwrap();
 
-        let mut locations = vec![];
-
-        for source in parsed.seeds.clone() {
-            let mut dest = source;
-
-            for table in parsed.flowing() {
-                dest = table.source_to_dest(dest);
-            }
-
-            locations.push(dest);
-        }
-
-        locations.into_iter().min().unwrap()
+        parsed
+            .seeds
+            .clone()
+            .into_iter()
+            .map(|source| {
+                parsed
+                    .flowing()
+                    .into_iter()
+                    .fold(source, |dest, table| table.source_to_dest(dest))
+            })
+            .min()
+            .unwrap()
     }
 
     #[cfg(test)]
@@ -34,10 +33,10 @@ fn read_input() -> utils::ReadLines {
 }
 
 fn main() {
-    // let result = part_one::part_one();
-    // println!("result: {result}");
-    let result = part_two::part_two();
+    let result = part_one::part_one();
     println!("result: {result}");
+    // let result = part_two::part_two();
+    // println!("result: {result}");
 }
 
 mod parse {
@@ -223,7 +222,7 @@ mod part_two {
 
     use range_ext::intersect::Intersect;
 
-    // dead slow
+    // 82 seconds on release on m1 pro
     pub fn part_two() -> i64 {
         // ranges do not overlap
 
@@ -265,26 +264,23 @@ mod part_two {
             })
             .collect::<Vec<_>>();
 
-        let mut locations = vec![];
-
-        for source in ranges.into_iter().flatten() {
-            let mut dest = source;
-
-            for table in parsed.flowing() {
-                dest = table.source_to_dest(dest);
-            }
-
-            locations.push(dest);
-        }
-
-        locations.into_iter().min().unwrap()
+        ranges
+            .into_iter()
+            .flatten()
+            .map(|source| {
+                parsed
+                    .flowing()
+                    .into_iter()
+                    .fold(source, |dest, table| table.source_to_dest(dest))
+            })
+            .min()
+            .unwrap()
     }
 
     #[cfg(test)]
     #[ignore]
     #[test]
     fn test_part_two() {
-        // 993500720
         assert_eq!(part_two(), 4917124);
     }
 }
