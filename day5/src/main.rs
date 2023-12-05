@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 mod part_one {
     use super::*;
 
@@ -27,16 +25,11 @@ mod part_one {
     }
 }
 
-fn read_input() -> utils::ReadLines {
-    let filename = "input.txt";
-    utils::read_lines(filename).unwrap()
-}
-
 fn main() {
     let result = part_one::part_one();
     println!("result: {result}");
-    // let result = part_two::part_two();
-    // println!("result: {result}");
+    let result = part_two::part_two();
+    println!("result: {result}");
 }
 
 mod parse {
@@ -65,10 +58,6 @@ mod parse {
 
         pub fn source_range(&self) -> Range<i64> {
             self.source..self.source + self.range
-        }
-
-        pub fn dest_range(&self) -> Range<i64> {
-            self.dest..self.dest + self.range
         }
     }
 
@@ -119,12 +108,6 @@ mod parse {
             } else {
                 dest.unwrap().unwrap()
             }
-        }
-
-        pub fn from_min(&self) -> Vec<Mapping> {
-            let mut q = self.inner.clone();
-            q.sort_by_key(|mapping| mapping.dest);
-            q
         }
     }
 
@@ -206,11 +189,6 @@ mod parse {
             },
         ))
     }
-
-    pub fn foo() {
-        let input = super::input();
-        dbg!(parse_input(input));
-    }
 }
 
 fn input() -> &'static str {
@@ -220,47 +198,15 @@ fn input() -> &'static str {
 mod part_two {
     use super::*;
 
-    use range_ext::intersect::Intersect;
-
-    // 82 seconds on release on m1 pro
     pub fn part_two() -> i64 {
-        // ranges do not overlap
-
         let (_, parsed) = parse::parse_input(input()).unwrap();
-
-        // for humidity_to_location_range in parsed.humidity_to_location.from_min() {
-        //     let tables_bottom_to_top = {
-        //         let mut q = parsed.flowing();
-        //         q.reverse();
-        //         let mut d = q.into_iter();
-        //         d.next().unwrap();
-        //         d.collect::<Vec<_>>()
-        //     };
-
-        //     for table in tables_bottom_to_top {
-        //         for intersection in table.inner.iter().map(|mapping| {
-        //             mapping
-        //                 .dest_range()
-        //                 .intersect(&humidity_to_location_range.source_range())
-        //         }) {
-        //             match intersection {
-        //                 range_ext::intersect::Intersection::Empty => {}
-        //                 range_ext::intersect::Intersection::Overlap => {}
-        //                 range_ext::intersect::Intersection::Full => {}
-        //             }
-        //         }
-
-        //         // dbg!(q);
-        //         break;
-        //     }
-        // }
 
         let ranges = parsed
             .seeds
             .chunks_exact(2)
             .map(|chunk| {
                 let (start, range) = (chunk[0], chunk[1]);
-                (start..start + range)
+                start..start + range
             })
             .collect::<Vec<_>>();
 
