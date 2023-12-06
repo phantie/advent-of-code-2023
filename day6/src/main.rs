@@ -18,6 +18,7 @@ mod part_one {
 
 mod part_two {
     use super::Race;
+    use std::cmp::Ordering;
 
     pub fn part_two(races: Vec<Race>) -> usize {
         let (times, distances) = races.into_iter().fold(
@@ -35,16 +36,57 @@ mod part_two {
             distance: distances.parse().unwrap(),
         };
 
-        let start_idx = (1..race.time)
-            .find(|hold_millis| race.beats_record_with_hold(*hold_millis))
-            .unwrap() as usize;
+        fn binary_search(range_len: usize, f: impl Fn(usize) -> Ordering) -> Option<usize> {
+            let length = range_len;
+            let mut half = length / 2;
+            let mut hind = length - 1;
+            let mut lind = 0;
+            let mut current = half;
 
-        let end_idx = (1..race.time)
-            .rev()
-            .find(|hold_millis| race.beats_record_with_hold(*hold_millis))
-            .unwrap() as usize;
+            while lind <= hind {
+                let cmp = f(current);
 
-        end_idx - start_idx + 1
+                match cmp {
+                    Ordering::Equal => return Some(half),
+                    Ordering::Less => lind = half + 1,
+                    Ordering::Greater => hind = half - 1,
+                }
+                half = (hind + lind) / 2;
+                current = half;
+            }
+            return None;
+        }
+
+        let start_idx = binary_search(race.time as usize, |current| {
+            match (
+                race.beats_record_with_hold(current as u64),
+                race.beats_record_with_hold(current as u64 + 1),
+            ) {
+                (false, true) => Ordering::Equal,
+                (false, false) => Ordering::Less, // ambiguous but works in example
+                (true, true) => Ordering::Greater,
+                (true, false) => Ordering::Greater,
+            }
+        })
+        .unwrap()
+            + 1;
+
+        let end_idx = binary_search(race.time as usize - start_idx, |current| {
+            match (
+                race.beats_record_with_hold((current + start_idx) as u64),
+                race.beats_record_with_hold((current + start_idx + 1) as u64),
+            ) {
+                (true, false) => Ordering::Equal,
+                (true, true) => Ordering::Less,
+                (false, true) => Ordering::Less,
+                (false, false) => Ordering::Greater,
+            }
+        })
+        .unwrap()
+            + start_idx
+            + 1;
+
+        end_idx - start_idx
     }
 
     #[cfg(test)]
