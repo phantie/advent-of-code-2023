@@ -1,5 +1,7 @@
 mod part_one {
-    pub fn part_one(races: Vec<crate::parse::Race>) -> usize {
+    use super::Race;
+
+    pub fn part_one(races: Vec<Race>) -> usize {
         races
             .into_iter()
             .map(|race| race.ways_to_beat_the_record())
@@ -15,10 +17,12 @@ mod part_one {
 }
 
 mod part_two {
-    pub fn part_two(races: Vec<crate::parse::Race>) -> usize {
+    use super::Race;
+
+    pub fn part_two(races: Vec<Race>) -> usize {
         let (times, distances) = races.into_iter().fold(
             (String::new(), String::new()),
-            |(times, distances), crate::parse::Race { time, distance }| {
+            |(times, distances), Race { time, distance }| {
                 (
                     format!("{times}{}", time),
                     format!("{distances}{}", distance),
@@ -26,29 +30,21 @@ mod part_two {
             },
         );
 
-        let race = crate::parse::Race {
+        let race = Race {
             time: times.parse().unwrap(),
             distance: distances.parse().unwrap(),
         };
 
-        let idx1 = (1..race.time)
-            .find(|hold_millis| {
-                let time_remaining = race.time - hold_millis;
-                let speed = *hold_millis;
-                speed * time_remaining > race.distance
-            })
+        let start_idx = (1..race.time)
+            .find(|hold_millis| race.beats_record_with_hold(*hold_millis))
             .unwrap() as usize;
 
-        let idx2 = (1..race.time)
+        let end_idx = (1..race.time)
             .rev()
-            .find(|hold_millis| {
-                let time_remaining = race.time - hold_millis;
-                let speed = *hold_millis;
-                speed * time_remaining > race.distance
-            })
+            .find(|hold_millis| race.beats_record_with_hold(*hold_millis))
             .unwrap() as usize;
 
-        idx2 - idx1 + 1
+        end_idx - start_idx + 1
     }
 
     #[cfg(test)]
@@ -59,31 +55,34 @@ mod part_two {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Race {
+    pub time: u64,
+    pub distance: u64,
+}
+
+impl Race {
+    pub fn ways_to_beat_the_record(&self) -> usize {
+        (1..self.time)
+            .filter(|hold_millis| self.beats_record_with_hold(*hold_millis))
+            .count()
+    }
+
+    pub fn beats_record_with_hold(&self, hold_millis: u64) -> bool {
+        let time_remaining = self.time - hold_millis;
+        let speed = hold_millis;
+        speed * time_remaining > self.distance
+    }
+}
+
 mod parse {
+    use super::Race;
     use nom::{
         bytes::complete::tag,
         character::complete::{self, space1},
         multi::separated_list1,
         IResult,
     };
-
-    #[derive(Debug, Clone, Copy)]
-    pub struct Race {
-        pub time: u64,
-        pub distance: u64,
-    }
-
-    impl Race {
-        pub fn ways_to_beat_the_record(&self) -> usize {
-            (1..self.time)
-                .filter(|hold_millis| {
-                    let time_remaining = self.time - hold_millis;
-                    let speed = *hold_millis;
-                    speed * time_remaining > self.distance
-                })
-                .count()
-        }
-    }
 
     pub fn parse_input(input: &str) -> IResult<&str, Vec<Race>> {
         let (input, _) = tag("Time:")(input)?;
