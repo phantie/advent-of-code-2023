@@ -31,7 +31,24 @@ mod part_two {
             distance: distances.parse().unwrap(),
         };
 
-        race.ways_to_beat_the_record()
+        let idx1 = (1..race.time)
+            .find(|hold_millis| {
+                let time_remaining = race.time - hold_millis;
+                let speed = *hold_millis;
+                speed * time_remaining > race.distance
+            })
+            .unwrap() as usize;
+
+        let idx2 = (1..race.time)
+            .rev()
+            .find(|hold_millis| {
+                let time_remaining = race.time - hold_millis;
+                let speed = *hold_millis;
+                speed * time_remaining > race.distance
+            })
+            .unwrap() as usize;
+
+        idx2 - idx1 + 1
     }
 
     #[cfg(test)]
