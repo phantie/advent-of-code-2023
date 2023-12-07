@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 fn main() {
-    part_one::part_one(); // 254024898
+    dbg!(part_one::part_one());
 }
 
 fn read_input() -> utils::ReadLines {
@@ -52,7 +52,7 @@ mod parse {
         }
     }
 
-    #[derive(Debug, PartialEq, Eq, PartialOrd)]
+    #[derive(Debug)]
     pub struct Hand(String);
 
     impl AsRef<str> for Hand {
@@ -104,22 +104,8 @@ mod parse {
                 [2, 2, 1] => TwoPair,
                 [2, 1, 1, 1] => OnePair,
                 [1, 1, 1, 1, 1] => HighCard,
-                ref a => {
-                    dbg!(a);
-                    unreachable!()
-                }
+                _ => unreachable!(),
             }
-        }
-    }
-
-    impl Ord for Hand {
-        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-            use std::cmp::Ordering;
-            self.kind().cmp(&other.kind())
-            // match self.kind().cmp(&other.kind()) {
-            //     v @ (Ordering::Less | Ordering::Greater) => v,
-            //     Ordering::Equal => self.label_cmp(other),
-            // }
         }
     }
 
@@ -154,6 +140,13 @@ mod part_one {
         hands
             .into_iter()
             .enumerate()
+            // from weakest to strongest hand order
             .fold(0, |acc, (i, (hand, bid))| acc + ((i + 1) * bid as usize)) as u32
+    }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_one() {
+        assert_eq!(part_one(), 254024898);
     }
 }
