@@ -1,7 +1,5 @@
-#![allow(non_upper_case_globals)]
-
 mod part_one {
-    use super::*;
+    use super::{NormalRules, Rules};
 
     pub fn part_one() -> u32 {
         NormalRules.calc()
@@ -15,7 +13,7 @@ mod part_one {
 }
 
 mod part_two {
-    use super::*;
+    use super::{AbnormalJoker, Rules};
 
     pub fn part_two() -> u32 {
         AbnormalJoker.calc()
@@ -26,15 +24,6 @@ mod part_two {
     fn test_part_two() {
         assert_eq!(part_two(), 254115617);
     }
-}
-
-fn label_to_weight(value: char, labels: &[char]) -> u32 {
-    (labels.len()
-        - labels
-            .clone()
-            .into_iter()
-            .position(|v| v == &value)
-            .unwrap()) as u32
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -124,6 +113,15 @@ trait Rules {
             Ordering::Equal
         }
     }
+}
+
+fn label_to_weight(value: char, labels: &[char]) -> u32 {
+    (labels.len()
+        - labels
+            .clone()
+            .into_iter()
+            .position(|v| v == &value)
+            .unwrap()) as u32
 }
 
 struct NormalRules;
