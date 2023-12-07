@@ -2,6 +2,7 @@
 
 fn main() {
     dbg!(part_one::part_one());
+    dbg!(part_two::part_two());
 }
 
 fn read_input() -> utils::ReadLines {
@@ -20,7 +21,15 @@ mod parse {
         (labels.len() - labels.clone().into_iter().position(|v| v == value).unwrap()) as u32
     }
 
-    #[derive(Debug, PartialEq, Eq, PartialOrd)]
+    fn joker_label_to_weight(value: char) -> u32 {
+        let labels = [
+            'A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J',
+        ];
+
+        (labels.len() - labels.clone().into_iter().position(|v| v == value).unwrap()) as u32
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
     pub enum HandKind {
         FiveOfAKind,
         FourOfAKind,
@@ -80,6 +89,66 @@ mod parse {
                     .unwrap()
             } else {
                 Ordering::Equal
+            }
+        }
+
+        pub fn joker_label_cmp(&self, other: &Self) -> Ordering {
+            if self.joker_kind() == other.joker_kind() {
+                self.as_ref()
+                    .chars()
+                    .zip(other.as_ref().chars())
+                    .find_map(|(self_c, other_c)| {
+                        match joker_label_to_weight(self_c).cmp(&joker_label_to_weight(other_c)) {
+                            Ordering::Equal => None,
+                            v => Some(v),
+                        }
+                    })
+                    .unwrap()
+            } else {
+                Ordering::Equal
+            }
+        }
+
+        pub fn joker_kind(&self) -> HandKind {
+            use std::collections::HashMap;
+            let char_count = self.as_ref().chars().fold(HashMap::new(), |mut map, c| {
+                *map.entry(c).or_insert(0) += 1;
+                map
+            });
+
+            if !char_count.contains_key(&'J') {
+                return self.kind();
+            }
+
+            let kind = self.kind();
+
+            use HandKind::*;
+            match (kind, *char_count.get(&'J').unwrap()) {
+                (FiveOfAKind, 5) => FiveOfAKind,
+                (FiveOfAKind, _) => unreachable!(),
+
+                (FourOfAKind, 4) => FiveOfAKind,
+                (FourOfAKind, 1) => FiveOfAKind,
+                (FourOfAKind, _) => unreachable!(),
+
+                (FullHouse, 3) => FiveOfAKind,
+                (FullHouse, 2) => FiveOfAKind,
+                (FullHouse, _) => unreachable!(),
+
+                (ThreeOfAKind, 3) => FourOfAKind,
+                (ThreeOfAKind, 1) => FourOfAKind,
+                (ThreeOfAKind, _) => unreachable!(),
+
+                (TwoPair, 2) => FourOfAKind,
+                (TwoPair, 1) => FullHouse,
+                (TwoPair, _) => unreachable!(),
+
+                (OnePair, 2) => ThreeOfAKind,
+                (OnePair, 1) => ThreeOfAKind,
+                (OnePair, _) => unreachable!(),
+
+                (HighCard, 1) => OnePair,
+                (HighCard, _) => unreachable!(),
             }
         }
 
@@ -148,5 +217,35 @@ mod part_one {
     #[test]
     fn test_part_one() {
         assert_eq!(part_one(), 254024898);
+    }
+}
+
+mod part_two {
+    use super::parse::*;
+    use super::*;
+
+    pub fn part_two() -> u32 {
+        let mut hands = read_input()
+            .map(Result::unwrap)
+            .map(parse_line)
+            .collect::<Vec<_>>();
+
+        hands.sort_by(|(lhs, _), (rhs, _)| lhs.joker_kind().cmp(&rhs.joker_kind()));
+        hands.sort_by(|(lhs, _), (rhs, _)| lhs.joker_label_cmp(&rhs));
+        // hands.reverse();
+
+        // dbg!(&hands[..10]);
+
+        hands
+            .into_iter()
+            .enumerate()
+            // from weakest to strongest hand order
+            .fold(0, |acc, (i, (hand, bid))| acc + ((i + 1) * bid as usize)) as u32
+    }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 254115617);
     }
 }
