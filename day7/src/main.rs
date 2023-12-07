@@ -1,23 +1,10 @@
-#![allow(unused)]
 #![allow(non_upper_case_globals)]
 
 mod part_one {
     use super::*;
 
     pub fn part_one() -> u32 {
-        let mut hands = read_input()
-            .map(Result::unwrap)
-            .map(parse_line)
-            .collect::<Vec<_>>();
-
-        hands.sort_by(|(lhs, _), (rhs, _)| lhs.kind().cmp(&rhs.kind()));
-        hands.sort_by(|(lhs, _), (rhs, _)| lhs.label_cmp(&rhs));
-
-        hands
-            .into_iter()
-            .enumerate()
-            // from weakest to strongest hand order
-            .fold(0, |acc, (i, (hand, bid))| acc + ((i + 1) * bid as usize)) as u32
+        NormalRules.calc()
     }
 
     #[cfg(test)]
@@ -31,19 +18,7 @@ mod part_two {
     use super::*;
 
     pub fn part_two() -> u32 {
-        let mut hands = read_input()
-            .map(Result::unwrap)
-            .map(parse_line)
-            .collect::<Vec<_>>();
-
-        hands.sort_by(|(lhs, _), (rhs, _)| lhs.joker_kind().cmp(&rhs.joker_kind()));
-        hands.sort_by(|(lhs, _), (rhs, _)| lhs.joker_label_cmp(&rhs));
-
-        hands
-            .into_iter()
-            .enumerate()
-            // from weakest to strongest hand order
-            .fold(0, |acc, (i, (hand, bid))| acc + ((i + 1) * bid as usize)) as u32
+        AbnormalJoker.calc()
     }
 
     #[cfg(test)]
@@ -52,35 +27,6 @@ mod part_two {
         assert_eq!(part_two(), 254115617);
     }
 }
-
-fn main() {
-    dbg!(part_one::part_one());
-    dbg!(part_two::part_two());
-}
-
-fn read_input() -> utils::ReadLines {
-    let filename = "input.txt";
-    utils::read_lines(filename).unwrap()
-}
-
-pub fn parse_line(value: String) -> (Hand, Bid) {
-    let (hand, bid) = {
-        let mut s = value.split(" ");
-        (s.next().unwrap(), s.next().unwrap())
-    };
-
-    (Hand::new(hand), bid.parse().unwrap())
-}
-
-use std::cmp::Ordering;
-
-const ordered_labels: &[char] = &[
-    'A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2',
-];
-
-const ordered_joker_labels: &[char] = &[
-    'A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J',
-];
 
 fn label_to_weight(value: char, labels: &[char]) -> u32 {
     (labels.len()
@@ -136,15 +82,38 @@ impl Hand {
     pub fn new(value: &str) -> Self {
         Self(value.into())
     }
+}
 
-    pub fn label_cmp(&self, other: &Self) -> Ordering {
-        if self.kind() == other.kind() {
-            self.as_ref()
+pub type Bid = u32;
+
+trait Rules {
+    fn ordered_labels() -> &'static [char];
+    fn kind(hand: &Hand) -> HandKind;
+
+    fn calc(&self) -> u32 {
+        let mut hands = read_input()
+            .map(Result::unwrap)
+            .map(parse_line)
+            .collect::<Vec<_>>();
+
+        hands.sort_by(|(lhs, _), (rhs, _)| Self::kind(lhs).cmp(&Self::kind(rhs)));
+        hands.sort_by(|(lhs, _), (rhs, _)| Self::label_cmp(lhs, rhs));
+
+        hands
+            .into_iter()
+            .enumerate()
+            // from weakest to strongest hand order
+            .fold(0, |acc, (i, (_hand, bid))| acc + ((i + 1) * bid as usize)) as u32
+    }
+
+    fn label_cmp(lhs: &Hand, rhs: &Hand) -> Ordering {
+        if Self::kind(lhs) == Self::kind(rhs) {
+            lhs.as_ref()
                 .chars()
-                .zip(other.as_ref().chars())
+                .zip(rhs.as_ref().chars())
                 .find_map(|(self_c, other_c)| {
-                    match label_to_weight(self_c, ordered_labels)
-                        .cmp(&label_to_weight(other_c, ordered_labels))
+                    match label_to_weight(self_c, Self::ordered_labels())
+                        .cmp(&label_to_weight(other_c, Self::ordered_labels()))
                     {
                         Ordering::Equal => None,
                         v => Some(v),
@@ -155,61 +124,21 @@ impl Hand {
             Ordering::Equal
         }
     }
+}
 
-    pub fn joker_label_cmp(&self, other: &Self) -> Ordering {
-        if self.joker_kind() == other.joker_kind() {
-            self.as_ref()
-                .chars()
-                .zip(other.as_ref().chars())
-                .find_map(|(self_c, other_c)| {
-                    match label_to_weight(self_c, ordered_joker_labels)
-                        .cmp(&label_to_weight(other_c, ordered_joker_labels))
-                    {
-                        Ordering::Equal => None,
-                        v => Some(v),
-                    }
-                })
-                .unwrap()
-        } else {
-            Ordering::Equal
-        }
+struct NormalRules;
+struct AbnormalJoker;
+
+impl Rules for NormalRules {
+    fn ordered_labels() -> &'static [char] {
+        &[
+            'A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2',
+        ]
     }
 
-    pub fn joker_kind(&self) -> HandKind {
-        let j_count = self.as_ref().chars().filter(|c| *c == 'J').count();
-
-        if j_count == 0 {
-            return self.kind();
-        }
-
-        use HandKind::*;
-        match (self.kind(), j_count) {
-            (FiveOfAKind, 5) => FiveOfAKind,
-
-            (FourOfAKind, 4) => FiveOfAKind,
-            (FourOfAKind, 1) => FiveOfAKind,
-
-            (FullHouse, 3) => FiveOfAKind,
-            (FullHouse, 2) => FiveOfAKind,
-
-            (ThreeOfAKind, 3) => FourOfAKind,
-            (ThreeOfAKind, 1) => FourOfAKind,
-
-            (TwoPair, 2) => FourOfAKind,
-            (TwoPair, 1) => FullHouse,
-
-            (OnePair, 2) => ThreeOfAKind,
-            (OnePair, 1) => ThreeOfAKind,
-
-            (HighCard, 1) => OnePair,
-
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn kind(&self) -> HandKind {
+    fn kind(hand: &Hand) -> HandKind {
         use std::collections::HashMap;
-        let char_count = self.as_ref().chars().fold(HashMap::new(), |mut map, c| {
+        let char_count = hand.as_ref().chars().fold(HashMap::new(), |mut map, c| {
             *map.entry(c).or_insert(0) += 1;
             map
         });
@@ -233,4 +162,63 @@ impl Hand {
     }
 }
 
-pub type Bid = u32;
+impl Rules for AbnormalJoker {
+    fn ordered_labels() -> &'static [char] {
+        &[
+            'A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J',
+        ]
+    }
+
+    fn kind(hand: &Hand) -> HandKind {
+        let j_count = hand.as_ref().chars().filter(|c| *c == 'J').count();
+
+        if j_count == 0 {
+            return NormalRules::kind(hand);
+        }
+
+        use HandKind::*;
+        match (NormalRules::kind(hand), j_count) {
+            (FiveOfAKind, 5) => FiveOfAKind,
+
+            (FourOfAKind, 4) => FiveOfAKind,
+            (FourOfAKind, 1) => FiveOfAKind,
+
+            (FullHouse, 3) => FiveOfAKind,
+            (FullHouse, 2) => FiveOfAKind,
+
+            (ThreeOfAKind, 3) => FourOfAKind,
+            (ThreeOfAKind, 1) => FourOfAKind,
+
+            (TwoPair, 2) => FourOfAKind,
+            (TwoPair, 1) => FullHouse,
+
+            (OnePair, 2) => ThreeOfAKind,
+            (OnePair, 1) => ThreeOfAKind,
+
+            (HighCard, 1) => OnePair,
+
+            _ => unreachable!(),
+        }
+    }
+}
+
+fn main() {
+    dbg!(part_one::part_one());
+    dbg!(part_two::part_two());
+}
+
+fn read_input() -> utils::ReadLines {
+    let filename = "input.txt";
+    utils::read_lines(filename).unwrap()
+}
+
+pub fn parse_line(value: String) -> (Hand, Bid) {
+    let (hand, bid) = {
+        let mut s = value.split(" ");
+        (s.next().unwrap(), s.next().unwrap())
+    };
+
+    (Hand::new(hand), bid.parse().unwrap())
+}
+
+use std::cmp::Ordering;
