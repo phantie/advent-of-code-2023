@@ -56,7 +56,7 @@ mod parse {
     }
 
     impl Ord for HandKind {
-        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        fn cmp(&self, other: &Self) -> Ordering {
             self.weight().cmp(&other.weight())
         }
     }
@@ -110,45 +110,34 @@ mod parse {
         }
 
         pub fn joker_kind(&self) -> HandKind {
-            use std::collections::HashMap;
-            let char_count = self.as_ref().chars().fold(HashMap::new(), |mut map, c| {
-                *map.entry(c).or_insert(0) += 1;
-                map
-            });
+            let j_count = self.as_ref().chars().filter(|c| *c == 'J').count();
 
-            if !char_count.contains_key(&'J') {
+            if j_count == 0 {
                 return self.kind();
             }
 
-            let kind = self.kind();
-
             use HandKind::*;
-            match (kind, *char_count.get(&'J').unwrap()) {
+            match (self.kind(), j_count) {
                 (FiveOfAKind, 5) => FiveOfAKind,
-                (FiveOfAKind, _) => unreachable!(),
 
                 (FourOfAKind, 4) => FiveOfAKind,
                 (FourOfAKind, 1) => FiveOfAKind,
-                (FourOfAKind, _) => unreachable!(),
 
                 (FullHouse, 3) => FiveOfAKind,
                 (FullHouse, 2) => FiveOfAKind,
-                (FullHouse, _) => unreachable!(),
 
                 (ThreeOfAKind, 3) => FourOfAKind,
                 (ThreeOfAKind, 1) => FourOfAKind,
-                (ThreeOfAKind, _) => unreachable!(),
 
                 (TwoPair, 2) => FourOfAKind,
                 (TwoPair, 1) => FullHouse,
-                (TwoPair, _) => unreachable!(),
 
                 (OnePair, 2) => ThreeOfAKind,
                 (OnePair, 1) => ThreeOfAKind,
-                (OnePair, _) => unreachable!(),
 
                 (HighCard, 1) => OnePair,
-                (HighCard, _) => unreachable!(),
+
+                _ => unreachable!(),
             }
         }
 
