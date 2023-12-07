@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![allow(non_upper_case_globals)]
 
 mod part_one {
     use super::*;
@@ -73,20 +74,21 @@ pub fn parse_line(value: String) -> (Hand, Bid) {
 
 use std::cmp::Ordering;
 
-fn label_to_weight(value: char) -> u32 {
-    let labels = [
-        'A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2',
-    ];
+const ordered_labels: &[char] = &[
+    'A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2',
+];
 
-    (labels.len() - labels.clone().into_iter().position(|v| v == value).unwrap()) as u32
-}
+const ordered_joker_labels: &[char] = &[
+    'A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J',
+];
 
-fn joker_label_to_weight(value: char) -> u32 {
-    let labels = [
-        'A', 'K', 'Q', 'T', '9', '8', '7', '6', '5', '4', '3', '2', 'J',
-    ];
-
-    (labels.len() - labels.clone().into_iter().position(|v| v == value).unwrap()) as u32
+fn label_to_weight(value: char, labels: &[char]) -> u32 {
+    (labels.len()
+        - labels
+            .clone()
+            .into_iter()
+            .position(|v| v == &value)
+            .unwrap()) as u32
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -141,7 +143,9 @@ impl Hand {
                 .chars()
                 .zip(other.as_ref().chars())
                 .find_map(|(self_c, other_c)| {
-                    match label_to_weight(self_c).cmp(&label_to_weight(other_c)) {
+                    match label_to_weight(self_c, ordered_labels)
+                        .cmp(&label_to_weight(other_c, ordered_labels))
+                    {
                         Ordering::Equal => None,
                         v => Some(v),
                     }
@@ -158,7 +162,9 @@ impl Hand {
                 .chars()
                 .zip(other.as_ref().chars())
                 .find_map(|(self_c, other_c)| {
-                    match joker_label_to_weight(self_c).cmp(&joker_label_to_weight(other_c)) {
+                    match label_to_weight(self_c, ordered_joker_labels)
+                        .cmp(&label_to_weight(other_c, ordered_joker_labels))
+                    {
                         Ordering::Equal => None,
                         v => Some(v),
                     }
