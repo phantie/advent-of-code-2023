@@ -1,7 +1,6 @@
 fn main() {
-    println!("Hello, world!");
-
     dbg!(part_one::part_one()); // 20093
+    dbg!(part_two::part_two()); // 22103062509257
 }
 
 mod parse {
@@ -124,5 +123,41 @@ mod part_one {
         }
 
         unreachable!()
+    }
+}
+
+mod part_two {
+    use super::*;
+
+    pub fn part_two() -> u64 {
+        let (_, parsed) = parse::parse_input(input()).unwrap();
+
+        let mut starts = parsed
+            .mappings
+            .keys()
+            .filter(|key| key.ends_with("A"))
+            .map(|key| (key.as_str(), key.as_str(), 0))
+            .collect::<Vec<_>>();
+
+        for (_key, current, iteration) in starts.iter_mut() {
+            for (i, direction) in parsed.directions.iter().cycle().enumerate() {
+                *current = parsed
+                    .mappings
+                    .get(*current)
+                    .unwrap()
+                    .from_direction(*direction);
+
+                if current.ends_with("Z") {
+                    *iteration = i;
+                    break;
+                }
+            }
+        }
+
+        starts
+            .into_iter()
+            .map(|(_, _, x)| x as u64 + 1)
+            .reduce(num::integer::lcm)
+            .unwrap()
     }
 }
