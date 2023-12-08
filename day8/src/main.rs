@@ -3,7 +3,47 @@ fn main() {
     dbg!(part_two::part_two());
 }
 
+#[derive(Debug)]
+pub struct Parsed {
+    pub directions: Vec<Direction>,
+    pub mappings: Mappings,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Left,
+    Right,
+}
+
+#[derive(Debug)]
+pub struct Choices {
+    left: String,
+    right: String,
+}
+
+impl Choices {
+    pub fn from_direction(&self, direction: Direction) -> &str {
+        match direction {
+            Direction::Left => self.left.as_str(),
+            Direction::Right => self.right.as_str(),
+        }
+    }
+}
+
+impl From<char> for Direction {
+    fn from(value: char) -> Self {
+        match value {
+            'L' => Self::Left,
+            'R' => Self::Right,
+            _ => unreachable!(),
+        }
+    }
+}
+
+type Mappings = std::collections::HashMap<String, Choices>;
+
 mod parse {
+    use super::*;
     use nom::{
         bytes::complete::{tag, take_until},
         character::complete::newline,
@@ -12,50 +52,11 @@ mod parse {
     };
 
     #[derive(Debug)]
-    pub struct Parsed {
-        pub directions: Vec<Direction>,
-        pub mappings: Mappings,
-    }
-
-    #[derive(Debug)]
     pub struct Mapping {
         current: String,
         left: String,
         right: String,
     }
-
-    #[derive(Debug, Clone, Copy)]
-    pub enum Direction {
-        Left,
-        Right,
-    }
-
-    #[derive(Debug)]
-    pub struct Choices {
-        left: String,
-        right: String,
-    }
-
-    impl Choices {
-        pub fn from_direction(&self, direction: Direction) -> &str {
-            match direction {
-                Direction::Left => self.left.as_str(),
-                Direction::Right => self.right.as_str(),
-            }
-        }
-    }
-
-    impl From<char> for Direction {
-        fn from(value: char) -> Self {
-            match value {
-                'L' => Self::Left,
-                'R' => Self::Right,
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    type Mappings = std::collections::HashMap<String, Choices>;
 
     pub fn parse_mapping(input: &str) -> IResult<&str, Mapping> {
         let (input, current) = take_until(" ")(input)?;
@@ -113,11 +114,12 @@ mod part_one {
     pub fn part_one() -> usize {
         let (_, parsed) = parse::parse_input(input()).unwrap();
 
-        let mut acc = "AAA";
-        for (i, direction) in parsed.directions.iter().cycle().enumerate() {
-            acc = parsed.mappings.get(acc).unwrap().from_direction(*direction);
+        let mut walk_state = WalkState::new("AAA");
 
-            if acc == "ZZZ" {
+        for (i, direction) in parsed.directions.iter().cycle().enumerate() {
+            walk_state.next(&parsed.mappings, *direction);
+
+            if walk_state.as_ref() == "ZZZ" {
                 return i + 1;
             }
         }
@@ -132,28 +134,47 @@ mod part_one {
     }
 }
 
+struct WalkState<'str> {
+    current: &'str str,
+}
+
+impl<'str> WalkState<'str> {
+    pub fn new(init: &'str str) -> Self {
+        Self { current: init }
+    }
+
+    pub fn next(&mut self, mappings: &'str Mappings, direction: Direction) {
+        self.current = mappings
+            .get(self.current)
+            .unwrap()
+            .from_direction(direction);
+    }
+}
+
+impl<'str> AsRef<str> for WalkState<'str> {
+    fn as_ref(&self) -> &str {
+        &self.current
+    }
+}
+
 mod part_two {
     use super::*;
 
-    pub fn part_two() -> u64 {
+    pub fn part_two() -> usize {
         let (_, parsed) = parse::parse_input(input()).unwrap();
 
         let mut starts = parsed
             .mappings
             .keys()
             .filter(|key| key.ends_with("A"))
-            .map(|key| (key.as_str(), key.as_str(), 0))
+            .map(|key| (key.as_str(), WalkState::new(&key), 0))
             .collect::<Vec<_>>();
 
-        for (_key, current, iteration) in starts.iter_mut() {
+        for (_key, walk_state, iteration) in starts.iter_mut() {
             for (i, direction) in parsed.directions.iter().cycle().enumerate() {
-                *current = parsed
-                    .mappings
-                    .get(*current)
-                    .unwrap()
-                    .from_direction(*direction);
+                walk_state.next(&parsed.mappings, *direction);
 
-                if current.ends_with("Z") {
+                if walk_state.as_ref().ends_with("Z") {
                     *iteration = i;
                     break;
                 }
@@ -162,7 +183,7 @@ mod part_two {
 
         starts
             .into_iter()
-            .map(|(_, _, x)| x as u64 + 1)
+            .map(|(_, _, iteration)| iteration + 1)
             .reduce(num::integer::lcm)
             .unwrap()
     }
