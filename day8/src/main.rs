@@ -1,6 +1,6 @@
 fn main() {
-    dbg!(part_one::part_one()); // 20093
-    dbg!(part_two::part_two()); // 22103062509257
+    dbg!(part_one::part_one());
+    dbg!(part_two::part_two());
 }
 
 mod parse {
@@ -124,6 +124,12 @@ mod part_one {
 
         unreachable!()
     }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_one() {
+        assert_eq!(part_one(), 20093);
+    }
 }
 
 mod part_two {
@@ -159,5 +165,11 @@ mod part_two {
             .map(|(_, _, x)| x as u64 + 1)
             .reduce(num::integer::lcm)
             .unwrap()
+    }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 22103062509257);
     }
 }
