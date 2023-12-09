@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 fn main() {
     let part_one = part_one::part_one(); // 1637452029
     dbg!(part_one);
@@ -18,6 +16,12 @@ mod part_two {
             .map(predict_first)
             .sum::<SeqItem>()
     }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 908);
+    }
 }
 
 mod part_one {
@@ -27,26 +31,22 @@ mod part_one {
         read_input()
             .map(Result::unwrap)
             .map(parse_line)
-            .map(predict_first)
+            .map(predict_next)
             .sum::<SeqItem>()
+    }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_one() {
+        assert_eq!(part_one(), 1637452029);
     }
 }
 
 fn parse_line(value: String) -> Seq {
     value
         .split(" ")
-        .map(FromStr::from_str)
+        .map(std::str::FromStr::from_str)
         .map(Result::unwrap)
-        .collect()
-}
-
-#[allow(unused)]
-fn test_input() -> Vec<String> {
-    "0 3 6 9 12 15
-1 3 6 10 15 21
-10 13 16 21 30 45"
-        .split("\n")
-        .map(ToOwned::to_owned)
         .collect()
 }
 
