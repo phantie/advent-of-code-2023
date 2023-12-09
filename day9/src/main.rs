@@ -7,38 +7,42 @@ enum Predict {
 }
 
 fn predict(mode: Predict, seq: Seq) -> SeqItem {
-    let mut diffs = vec![seq];
+    std::iter::repeat(())
+        .try_fold(vec![seq], |mut acc, ()| {
+            let diff_seq = acc
+                .last()
+                .unwrap()
+                .as_slice()
+                .windows(2)
+                .map(|window| {
+                    let (l, r) = (window[0], window[1]);
+                    let diff = r - l;
+                    diff
+                })
+                .collect::<Vec<_>>();
 
-    loop {
-        let diff_seq = diffs
-            .last()
-            .unwrap()
-            .as_slice()
-            .windows(2)
-            .map(|window| {
-                let (l, r) = (window[0], window[1]);
-                let diff = r - l;
-                diff
-            })
-            .collect::<Vec<_>>();
+            let all_zeroes = diff_seq.iter().all(|v| *v == 0);
 
-        let all_zeroes = diff_seq.iter().all(|v| *v == 0);
+            acc.push(diff_seq);
 
-        diffs.push(diff_seq);
-
-        if all_zeroes {
-            break;
-        }
-    }
-
-    diffs.as_slice().windows(2).rev().fold(0, |acc, window| {
-        let (upper, _lower) = (&window[0], &window[1]);
-        if matches!(mode, Predict::Next) {
-            upper.last().unwrap() + acc
-        } else {
-            upper.first().unwrap() - acc
-        }
-    })
+            if all_zeroes {
+                Err(acc)
+            } else {
+                Ok(acc)
+            }
+        })
+        .unwrap_err()
+        .as_slice()
+        .windows(2)
+        .rev()
+        .fold(0, |acc, window| {
+            let (upper, _lower) = (&window[0], &window[1]);
+            if matches!(mode, Predict::Next) {
+                upper.last().unwrap() + acc
+            } else {
+                upper.first().unwrap() - acc
+            }
+        })
 }
 
 mod part_one {
