@@ -10,6 +10,7 @@ type Pos = (I, J);
 
 fn main() {
     let part_one = part_one::part_one();
+    let part_two = part_two::part_two();
 }
 
 fn input() -> &'static str {
@@ -155,7 +156,7 @@ mod part_one {
 
         assert!(start.is_start());
 
-        let (node, mut direction, mut pos) = Direction::iter()
+        let (node, direction, pos) = Direction::iter()
             .find_map(|direction| {
                 let cell = get_cell(&space, direction.from_pos(start_pos));
                 if cell.leads_to(direction.opposite()) {
@@ -189,5 +190,104 @@ mod part_one {
     #[test]
     fn test_part_one() {
         assert_eq!(part_one(), 6942);
+    }
+}
+
+mod part_two {
+    use super::*;
+    use strum::IntoEnumIterator;
+
+    pub fn part_two() -> usize {
+        let space = pad_space(parse(input()));
+
+        let start_pos = {
+            let flat_index = space
+                .iter()
+                .flatten()
+                .enumerate()
+                .find_map(|(i, cell)| if cell.is_start() { Some(i) } else { None })
+                .unwrap();
+
+            let row_len = space[0].len();
+
+            num::integer::div_rem(flat_index, row_len)
+        };
+
+        let start = get_cell(&space, start_pos);
+
+        assert!(start.is_start());
+
+        let (_node, direction, _pos) = Direction::iter()
+            .find_map(|direction| {
+                let cell = get_cell(&space, direction.from_pos(start_pos));
+                if cell.leads_to(direction.opposite()) {
+                    Some((cell.unwrap_node(), direction, start_pos))
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+
+        let mut ring = vec![(start, start_pos, direction)];
+
+        loop {
+            let (node, pos, direction) = ring.last().unwrap().clone();
+
+            let cell = get_cell(&space, direction.from_pos(pos));
+
+            if cell.is_start() {
+                break;
+            } else {
+                ring.push((
+                    cell,
+                    direction.from_pos(pos),
+                    cell.unwrap_node()
+                        .opposite_direction(direction.opposite())
+                        .unwrap(),
+                ));
+            }
+        }
+
+        {
+            assert_eq!(ring.len(), 13884);
+
+            let (start, _, _) = ring[0];
+            assert!(start.is_start());
+
+            let (end, _, _) = ring.last().unwrap();
+            assert!(!end.is_start());
+        }
+
+        let total_area = ring
+            .clone()
+            .into_iter()
+            .chain(std::iter::once(ring[0]))
+            .map(|(_, pos, _)| pos)
+            .collect::<Vec<_>>()
+            .as_slice()
+            .windows(2)
+            // https://en.wikipedia.org/wiki/Shoelace_formula, see Example
+            .map(|window| {
+                let ((x_l, y_l), (x_r, y_r)) = (window[0], window[1]);
+
+                // adjust y coord
+                let y_l = space.len() - y_l;
+                let y_r = space.len() - y_r;
+
+                (x_l * y_r) as i64 - (x_r * y_l) as i64
+            })
+            .sum::<i64>() as usize
+            / 2;
+
+        // derived from https://en.wikipedia.org/wiki/Pick%27s_theorem
+        // A = i + b / 2 - 1
+        // i = A - b / 2 + 1
+        total_area - ring.len() / 2 + 1
+    }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 297);
     }
 }
