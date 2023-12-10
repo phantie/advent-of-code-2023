@@ -16,7 +16,7 @@ fn input() -> &'static str {
     include_str!("../input.txt")
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, strum::EnumIter)]
 pub enum Direction {
     North,
     South,
@@ -144,6 +144,7 @@ fn get_field_node(space: &Space, (i, j): Pos) -> FieldNode {
 
 mod part_one {
     use super::*;
+    use strum::IntoEnumIterator;
 
     pub fn part_one() -> u32 {
         let space = pad_space(parse(input()));
@@ -165,41 +166,24 @@ mod part_one {
 
         assert!(start.is_start());
 
-        let adj = get_adjacent_indeces(pos);
+        let (node, mut direction, mut pos) = Direction::iter()
+            .find_map(|direction| {
+                let cell = get_field_node(&space, direction.from_pos(pos));
+                if cell.leads_to(direction.opposite()) {
+                    Some((cell.unwrap_node(), direction, pos))
+                } else {
+                    None
+                }
+            })
+            .unwrap();
 
-        let adjacent_nodes = adj
-            .clone()
-            .into_iter()
-            .map(|((i, j), rel_direction)| (space[i][j], rel_direction, (i, j)))
-            .collect::<Vec<_>>();
-
-        dbg!(&adjacent_nodes);
-
-        let paths = adjacent_nodes
-            .clone()
-            .into_iter()
-            .filter(|(node, rel_direction, pos)| node.leads_to(*rel_direction))
-            .collect::<Vec<_>>();
-
-        dbg!(&paths);
-
-        let (node, direction, pos) = paths.into_iter().next().unwrap();
-
-        let node = node.unwrap_node();
-
-        let opposite_direction = node.opposite_direction(direction).unwrap();
-
-        dbg!(opposite_direction);
-
-        let mut direction = opposite_direction;
-        let mut pos = pos;
         let mut counter = 0;
         loop {
             let node = get_field_node(&space, direction.from_pos(pos));
             counter += 1;
 
             if node.is_start() {
-                return counter / 2 + 1;
+                return counter / 2;
             }
 
             pos = direction.from_pos(pos);
