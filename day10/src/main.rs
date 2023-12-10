@@ -1,33 +1,10 @@
-#![allow(unused)]
-
-use std::str::FromStr;
-
 mod part_one {
     use super::*;
-    use strum::IntoEnumIterator;
 
     pub fn part_one() -> usize {
         let space = input().parse::<Space>().unwrap();
-        let start_pos = space.find_start_pos();
-        let start_direction = space.start_direction(start_pos);
-
-        std::iter::repeat(())
-            .enumerate()
-            .try_fold((start_pos, start_direction), |(pos, direction), (i, ())| {
-                let cell = space.get_cell(direction.from_pos(pos));
-
-                if cell.is_start() {
-                    Err(i / 2 + 1)
-                } else {
-                    Ok((
-                        direction.from_pos(pos),
-                        cell.unwrap_node()
-                            .opposite_direction(direction.opposite())
-                            .unwrap(),
-                    ))
-                }
-            })
-            .unwrap_err()
+        let ring = space.ring();
+        ring.len() / 2
     }
 
     #[cfg(test)]
@@ -39,50 +16,15 @@ mod part_one {
 
 mod part_two {
     use super::*;
-    use strum::IntoEnumIterator;
 
     pub fn part_two() -> usize {
         let space = input().parse::<Space>().unwrap();
-        let start_pos = space.find_start_pos();
-        let start_direction = space.start_direction(start_pos);
-
-        let ring = std::iter::repeat(())
-            .try_fold(vec![(start_pos, start_direction)], |mut ring, ()| {
-                let (pos, direction) = ring.last().unwrap().clone();
-                let cell = space.get_cell(direction.from_pos(pos));
-
-                if cell.is_start() {
-                    Err(ring)
-                } else {
-                    ring.push((
-                        direction.from_pos(pos),
-                        cell.unwrap_node()
-                            .opposite_direction(direction.opposite())
-                            .unwrap(),
-                    ));
-
-                    Ok(ring)
-                }
-            })
-            .unwrap_err();
-
-        {
-            assert_eq!(ring.len(), 13884);
-
-            let (start_pos, _) = ring[0];
-            let start = space.get_cell(start_pos);
-            assert!(start.is_start());
-
-            let (end_pos, _) = *ring.last().unwrap();
-            let end = space.get_cell(end_pos);
-            assert!(!end.is_start());
-        }
+        let ring = space.ring();
 
         let total_area = ring
             .clone()
             .into_iter()
             .chain(std::iter::once(ring[0]))
-            .map(|(pos, _)| pos)
             .collect::<Vec<_>>()
             .as_slice()
             .windows(2)
@@ -115,6 +57,49 @@ mod part_two {
 struct Space(pub Vec<SpaceRow>);
 
 impl Space {
+    pub fn ring(&self) -> Vec<Pos> {
+        let space = self;
+        let start_pos = space.find_start_pos();
+        let start_direction = space.start_direction(start_pos);
+
+        let ring = std::iter::repeat(())
+            .try_fold(vec![(start_pos, start_direction)], |mut ring, ()| {
+                let (pos, direction) = ring.last().unwrap().clone();
+                let cell = space.get_cell(direction.from_pos(pos));
+
+                if cell.is_start() {
+                    Err(ring)
+                } else {
+                    ring.push((
+                        direction.from_pos(pos),
+                        cell.unwrap_node()
+                            .opposite_direction(direction.opposite())
+                            .unwrap(),
+                    ));
+
+                    Ok(ring)
+                }
+            })
+            .unwrap_err()
+            .into_iter()
+            .map(|(pos, _)| pos)
+            .collect::<Vec<_>>();
+
+        {
+            assert_eq!(ring.len(), 13884);
+
+            let start_pos = ring[0];
+            let start = space.get_cell(start_pos);
+            assert!(start.is_start());
+
+            let end_pos = *ring.last().unwrap();
+            let end = space.get_cell(end_pos);
+            assert!(!end.is_start());
+        }
+
+        ring
+    }
+
     pub fn get_cell(&self, (i, j): Pos) -> Cell {
         self[i][j]
     }
@@ -234,7 +219,7 @@ type I = usize;
 type J = usize;
 type Pos = (I, J);
 
-impl FromStr for Space {
+impl std::str::FromStr for Space {
     type Err = ();
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         use Direction::*;
@@ -267,5 +252,7 @@ fn input() -> &'static str {
 
 fn main() {
     let part_one = part_one::part_one();
+    dbg!(part_one);
     let part_two = part_two::part_two();
+    dbg!(part_two);
 }
