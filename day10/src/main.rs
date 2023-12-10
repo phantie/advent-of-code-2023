@@ -8,24 +8,12 @@ mod part_one {
 
     pub fn part_one() -> usize {
         let space = input().parse::<Space>().unwrap();
-        let start_pos = space.find_start();
-        let start = space.get_cell(start_pos);
-        assert!(start.is_start());
-
-        let (node, direction, pos) = Direction::iter()
-            .find_map(|direction| {
-                let cell = space.get_cell(direction.from_pos(start_pos));
-                if cell.leads_to(direction.opposite()) {
-                    Some((cell.unwrap_node(), direction, start_pos))
-                } else {
-                    None
-                }
-            })
-            .unwrap();
+        let start_pos = space.find_start_pos();
+        let start_direction = space.start_direction(start_pos);
 
         std::iter::repeat(())
             .enumerate()
-            .try_fold((pos, direction), |(pos, direction), (i, ())| {
+            .try_fold((start_pos, start_direction), |(pos, direction), (i, ())| {
                 let cell = space.get_cell(direction.from_pos(pos));
 
                 if cell.is_start() {
@@ -55,48 +43,38 @@ mod part_two {
 
     pub fn part_two() -> usize {
         let space = input().parse::<Space>().unwrap();
-        let start_pos = space.find_start();
-        let start = space.get_cell(start_pos);
-        assert!(start.is_start());
+        let start_pos = space.find_start_pos();
+        let start_direction = space.start_direction(start_pos);
 
-        let (_node, direction, _pos) = Direction::iter()
-            .find_map(|direction| {
-                let cell = space.get_cell(direction.from_pos(start_pos));
-                if cell.leads_to(direction.opposite()) {
-                    Some((cell.unwrap_node(), direction, start_pos))
+        let ring = std::iter::repeat(())
+            .try_fold(vec![(start_pos, start_direction)], |mut ring, ()| {
+                let (pos, direction) = ring.last().unwrap().clone();
+                let cell = space.get_cell(direction.from_pos(pos));
+
+                if cell.is_start() {
+                    Err(ring)
                 } else {
-                    None
+                    ring.push((
+                        direction.from_pos(pos),
+                        cell.unwrap_node()
+                            .opposite_direction(direction.opposite())
+                            .unwrap(),
+                    ));
+
+                    Ok(ring)
                 }
             })
-            .unwrap();
-
-        let mut ring = vec![(start, start_pos, direction)];
-
-        loop {
-            let (node, pos, direction) = ring.last().unwrap().clone();
-
-            let cell = space.get_cell(direction.from_pos(pos));
-
-            if cell.is_start() {
-                break;
-            } else {
-                ring.push((
-                    cell,
-                    direction.from_pos(pos),
-                    cell.unwrap_node()
-                        .opposite_direction(direction.opposite())
-                        .unwrap(),
-                ));
-            }
-        }
+            .unwrap_err();
 
         {
             assert_eq!(ring.len(), 13884);
 
-            let (start, _, _) = ring[0];
+            let (start_pos, _) = ring[0];
+            let start = space.get_cell(start_pos);
             assert!(start.is_start());
 
-            let (end, _, _) = ring.last().unwrap();
+            let (end_pos, _) = *ring.last().unwrap();
+            let end = space.get_cell(end_pos);
             assert!(!end.is_start());
         }
 
@@ -104,7 +82,7 @@ mod part_two {
             .clone()
             .into_iter()
             .chain(std::iter::once(ring[0]))
-            .map(|(_, pos, _)| pos)
+            .map(|(pos, _)| pos)
             .collect::<Vec<_>>()
             .as_slice()
             .windows(2)
@@ -145,7 +123,7 @@ impl Space {
         self[0].len()
     }
 
-    pub fn find_start(&self) -> Pos {
+    pub fn find_start_pos(&self) -> Pos {
         let flat_index = self
             .iter()
             .flatten()
@@ -154,6 +132,20 @@ impl Space {
             .unwrap();
 
         num::integer::div_rem(flat_index, self.x_dim())
+    }
+
+    pub fn start_direction(&self, start_pos: Pos) -> Direction {
+        use strum::IntoEnumIterator;
+        Direction::iter()
+            .find_map(|direction| {
+                let cell = self.get_cell(direction.from_pos(start_pos));
+                if cell.leads_to(direction.opposite()) {
+                    Some(direction)
+                } else {
+                    None
+                }
+            })
+            .unwrap()
     }
 }
 
