@@ -7,7 +7,7 @@ mod part_one {
     use strum::IntoEnumIterator;
 
     pub fn part_one() -> usize {
-        let space = input().parse::<Space>().unwrap().pad();
+        let space = input().parse::<Space>().unwrap();
         let start_pos = space.find_start();
         let start = space.get_cell(start_pos);
         assert!(start.is_start());
@@ -54,7 +54,7 @@ mod part_two {
     use strum::IntoEnumIterator;
 
     pub fn part_two() -> usize {
-        let space = input().parse::<Space>().unwrap().pad();
+        let space = input().parse::<Space>().unwrap();
         let start_pos = space.find_start();
         let start = space.get_cell(start_pos);
         assert!(start.is_start());
@@ -154,24 +154,6 @@ impl Space {
             .unwrap();
 
         num::integer::div_rem(flat_index, self.x_dim())
-    }
-
-    pub fn pad(self) -> Self {
-        let row_len = self.x_dim();
-
-        let empty_row = (0..row_len + 2).map(|_| Cell::Ground).collect::<Vec<_>>();
-
-        Self(
-            std::iter::once(empty_row.clone())
-                .chain(self.clone().into_iter().map(|line| {
-                    std::iter::once(Cell::Ground)
-                        .chain(line.into_iter())
-                        .chain(std::iter::once(Cell::Ground))
-                        .collect()
-                }))
-                .chain(std::iter::once(empty_row.clone()))
-                .collect(),
-        )
     }
 }
 
