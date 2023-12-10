@@ -1,18 +1,20 @@
 #![allow(unused)]
 
+use std::str::FromStr;
+
 mod part_one {
     use super::*;
     use strum::IntoEnumIterator;
 
     pub fn part_one() -> usize {
-        let space = pad_space(parse(input()));
-        let start_pos = find_start(&space);
-        let start = get_cell(&space, start_pos);
+        let space = input().parse::<Space>().unwrap().pad();
+        let start_pos = space.find_start();
+        let start = space.get_cell(start_pos);
         assert!(start.is_start());
 
         let (node, direction, pos) = Direction::iter()
             .find_map(|direction| {
-                let cell = get_cell(&space, direction.from_pos(start_pos));
+                let cell = space.get_cell(direction.from_pos(start_pos));
                 if cell.leads_to(direction.opposite()) {
                     Some((cell.unwrap_node(), direction, start_pos))
                 } else {
@@ -24,7 +26,7 @@ mod part_one {
         std::iter::repeat(())
             .enumerate()
             .try_fold((pos, direction), |(pos, direction), (i, ())| {
-                let cell = get_cell(&space, direction.from_pos(pos));
+                let cell = space.get_cell(direction.from_pos(pos));
 
                 if cell.is_start() {
                     Err(i / 2 + 1)
@@ -52,14 +54,14 @@ mod part_two {
     use strum::IntoEnumIterator;
 
     pub fn part_two() -> usize {
-        let space = pad_space(parse(input()));
-        let start_pos = find_start(&space);
-        let start = get_cell(&space, start_pos);
+        let space = input().parse::<Space>().unwrap().pad();
+        let start_pos = space.find_start();
+        let start = space.get_cell(start_pos);
         assert!(start.is_start());
 
         let (_node, direction, _pos) = Direction::iter()
             .find_map(|direction| {
-                let cell = get_cell(&space, direction.from_pos(start_pos));
+                let cell = space.get_cell(direction.from_pos(start_pos));
                 if cell.leads_to(direction.opposite()) {
                     Some((cell.unwrap_node(), direction, start_pos))
                 } else {
@@ -73,7 +75,7 @@ mod part_two {
         loop {
             let (node, pos, direction) = ring.last().unwrap().clone();
 
-            let cell = get_cell(&space, direction.from_pos(pos));
+            let cell = space.get_cell(direction.from_pos(pos));
 
             if cell.is_start() {
                 break;
@@ -132,24 +134,55 @@ mod part_two {
     }
 }
 
-fn find_start(space: &Space) -> Pos {
-    let flat_index = space
-        .iter()
-        .flatten()
-        .enumerate()
-        .find_map(|(i, cell)| if cell.is_start() { Some(i) } else { None })
-        .unwrap();
+struct Space(pub Vec<SpaceRow>);
 
-    let row_len = space[0].len();
+impl Space {
+    pub fn get_cell(&self, (i, j): Pos) -> Cell {
+        self[i][j]
+    }
 
-    num::integer::div_rem(flat_index, row_len)
+    pub fn x_dim(&self) -> usize {
+        self[0].len()
+    }
+
+    pub fn find_start(&self) -> Pos {
+        let flat_index = self
+            .iter()
+            .flatten()
+            .enumerate()
+            .find_map(|(i, cell)| if cell.is_start() { Some(i) } else { None })
+            .unwrap();
+
+        num::integer::div_rem(flat_index, self.x_dim())
+    }
+
+    pub fn pad(self) -> Self {
+        let row_len = self.x_dim();
+
+        let empty_row = (0..row_len + 2).map(|_| Cell::Ground).collect::<Vec<_>>();
+
+        Self(
+            std::iter::once(empty_row.clone())
+                .chain(self.clone().into_iter().map(|line| {
+                    std::iter::once(Cell::Ground)
+                        .chain(line.into_iter())
+                        .chain(std::iter::once(Cell::Ground))
+                        .collect()
+                }))
+                .chain(std::iter::once(empty_row.clone()))
+                .collect(),
+        )
+    }
 }
 
-fn get_cell(space: &Space, (i, j): Pos) -> Cell {
-    space[i][j]
+impl std::ops::Deref for Space {
+    type Target = Vec<SpaceRow>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-type Space = Vec<SpaceRow>;
 type SpaceRow = Vec<Cell>;
 
 #[derive(Debug, strum::EnumIs, Clone, Copy)]
@@ -227,42 +260,31 @@ type I = usize;
 type J = usize;
 type Pos = (I, J);
 
-fn pad_space(space: Space) -> Space {
-    let row_len = space[0].len();
-
-    let empty_row = (0..row_len + 2).map(|_| Cell::Ground).collect::<Vec<_>>();
-
-    std::iter::once(empty_row.clone())
-        .chain(space.into_iter().map(|line| {
-            std::iter::once(Cell::Ground)
-                .chain(line.into_iter())
-                .chain(std::iter::once(Cell::Ground))
-                .collect()
-        }))
-        .chain(std::iter::once(empty_row.clone()))
-        .collect()
-}
-
-fn parse(input: &str) -> Space {
-    use Direction::*;
-    input
-        .split("\n")
-        .map(|line| {
-            line.chars()
-                .map(|char| match char {
-                    '.' => Cell::Ground,
-                    'S' => Cell::Start,
-                    '|' => Cell::Node(Node(South, North)),
-                    '-' => Cell::Node(Node(West, East)),
-                    'L' => Cell::Node(Node(North, East)),
-                    'J' => Cell::Node(Node(North, West)),
-                    '7' => Cell::Node(Node(South, West)),
-                    'F' => Cell::Node(Node(South, East)),
-                    _ => unreachable!(),
+impl FromStr for Space {
+    type Err = ();
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        use Direction::*;
+        Ok(Space(
+            input
+                .split("\n")
+                .map(|line| {
+                    line.chars()
+                        .map(|char| match char {
+                            '.' => Cell::Ground,
+                            'S' => Cell::Start,
+                            '|' => Cell::Node(Node(South, North)),
+                            '-' => Cell::Node(Node(West, East)),
+                            'L' => Cell::Node(Node(North, East)),
+                            'J' => Cell::Node(Node(North, West)),
+                            '7' => Cell::Node(Node(South, West)),
+                            'F' => Cell::Node(Node(South, East)),
+                            _ => unreachable!(),
+                        })
+                        .collect::<SpaceRow>()
                 })
-                .collect::<SpaceRow>()
-        })
-        .collect::<Space>()
+                .collect(),
+        ))
+    }
 }
 
 fn input() -> &'static str {
