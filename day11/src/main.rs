@@ -3,7 +3,7 @@ mod part_one {
 
     pub fn part_one() -> usize {
         let space = Space::default();
-        space.shortest_distances(1)
+        space.shortest_distances(1).sum::<usize>()
     }
 
     #[cfg(test)]
@@ -18,13 +18,28 @@ mod part_two {
 
     pub fn part_two() -> usize {
         let space = Space::default();
-        space.shortest_distances(10usize.pow(6) - 1)
+        space.shortest_distances(10usize.pow(6) - 1).sum::<usize>()
     }
 
     #[cfg(test)]
     #[test]
     fn test_part_two() {
         assert_eq!(part_two(), 630728425490);
+    }
+}
+
+impl Space {
+    pub fn shortest_distances(&self, expansion_multiplier: usize) -> impl Iterator<Item = usize> {
+        let space = self;
+
+        let empty_rows = space.empty_rows();
+        let empty_columns = space.empty_columns();
+
+        let galaxy_pairs = space.galaxy_pairs();
+
+        galaxy_pairs.into_iter().map(move |(l, r)| {
+            shortest_distance(l, r, expansion_multiplier, &empty_rows, &empty_columns)
+        })
     }
 }
 
@@ -53,22 +68,6 @@ pub fn shortest_distance(
 }
 
 impl Space {
-    pub fn shortest_distances(&self, expansion_multiplier: usize) -> usize {
-        let space = self;
-
-        let empty_rows = space.empty_rows();
-        let empty_columns = space.empty_columns();
-
-        let galaxy_pairs = space.galaxy_pairs();
-
-        galaxy_pairs
-            .into_iter()
-            .map(|(l, r)| {
-                shortest_distance(l, r, expansion_multiplier, &empty_rows, &empty_columns)
-            })
-            .sum::<usize>()
-    }
-
     pub fn galaxy_pairs(&self) -> Vec<(Pos, Pos)> {
         let galaxies = self.galaxies();
 
