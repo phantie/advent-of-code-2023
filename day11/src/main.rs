@@ -29,11 +29,11 @@ mod part_two {
 }
 
 pub fn shortest_distance(
-    (y_l, x_l): Pos,
-    (y_r, x_r): Pos,
+    (x_l, y_l): Pos,
+    (x_r, y_r): Pos,
     expansion_multiplier: usize,
-    empty_rows: &Vec<usize>,
-    empty_columns: &Vec<usize>,
+    empty_rows: &[usize],
+    empty_columns: &[usize],
 ) -> usize {
     let x_expansion = empty_columns
         .into_iter()
@@ -85,7 +85,10 @@ impl Space {
             .flatten()
             .enumerate()
             .filter_map(|(i, cell)| if cell.is_universe() { Some(i) } else { None })
-            .map(|flat_index| num::integer::div_rem(flat_index, self.x_dim()))
+            .map(|flat_index| {
+                let (div, rem) = num::integer::div_rem(flat_index, self.x_dim());
+                (rem, div)
+            })
             .collect()
     }
 
@@ -114,9 +117,9 @@ enum Cell {
     Universe,
 }
 
-type I = usize;
-type J = usize;
-type Pos = (I, J);
+type X = usize;
+type Y = usize;
+type Pos = (X, Y);
 
 type SpaceRow = Vec<Cell>;
 
