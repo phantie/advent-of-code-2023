@@ -1,4 +1,4 @@
-#![allow(unused)]
+#[allow(unused)]
 
 mod part_one {
     use super::*;
@@ -7,7 +7,7 @@ mod part_one {
         read_input()
             .map(Result::unwrap)
             .map(parse_line)
-            .map(|(pattern, damaged_seq)| arrangement_count(&pattern, &damaged_seq))
+            .map(|(pattern, damaged_seq)| fast_arrangement_count(pattern, damaged_seq))
             .sum::<usize>()
     }
 
@@ -18,7 +18,28 @@ mod part_one {
     }
 }
 
+mod part_two {
+    use super::*;
+
+    pub fn part_two() -> usize {
+        read_input()
+            .map(Result::unwrap)
+            .map(parse_line)
+            .map(extend_input)
+            .map(|(pattern, damaged_seq)| fast_arrangement_count(pattern, damaged_seq))
+            .sum::<usize>()
+    }
+
+    #[cfg(test)]
+    #[ignore]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 83317216247365);
+    }
+}
+
 // relatively slow, but clean
+#[allow(unused)]
 fn arrangement_count(pattern: &[Cell], damaged_seq: &[usize]) -> usize {
     fn matches_pattern(pattern: &[Cell], perm: &[Cell]) -> bool {
         pattern
@@ -45,7 +66,7 @@ fn arrangement_count(pattern: &[Cell], damaged_seq: &[usize]) -> usize {
         .count()
 }
 
-#[derive(Clone, Debug, PartialEq, strum::EnumIs)]
+#[derive(Clone, Copy, Debug, PartialEq, strum::EnumIs, Eq, Hash)]
 enum Cell {
     Unknown,
     Operational,
@@ -161,23 +182,82 @@ fn extend_input((mut pattern, mut damaged_seq): (Pattern, DamagedSeq)) -> (Patte
     (pattern, damaged_seq)
 }
 
-fn fast_arrangement_count(pattern: &[Cell], damaged_seq: &[usize]) -> usize {
-    unimplemented!()
-}
-
-mod part_two {
-    use super::*;
-
-    pub fn part_two() -> usize {
-        read_input()
-            .map(Result::unwrap)
-            .map(parse_line)
-            .map(extend_input)
-            .map(|(pattern, damaged_seq)| fast_arrangement_count(&pattern, &damaged_seq))
-            .sum::<usize>()
-    }
-}
-
 fn main() {
-    // part_one::part_one();
+    let part_one = part_one::part_one();
+    dbg!(part_one);
+    let part_two = part_two::part_two();
+    dbg!(part_two);
+}
+
+#[memoize::memoize]
+fn fast_arrangement_count(pattern: Vec<Cell>, damaged_seq: Vec<usize>) -> usize {
+    if damaged_seq.len() == 0 {
+        // check no damaged cells left
+        // if any: 0 else: 1
+        return pattern.iter().all(|c| !c.is_damaged()) as usize;
+    } else {
+        // if damaged_seq is not consumed but pattern is: 0
+        if pattern.len() == 0 {
+            return 0;
+        }
+    }
+
+    use Cell::*;
+    match pattern[0] {
+        Operational => {
+            // skip operational
+            fast_arrangement_count(
+                pattern
+                    .clone()
+                    .into_iter()
+                    .skip_while(|c| c.is_operational())
+                    .collect(),
+                damaged_seq,
+            )
+        }
+        Damaged => {
+            let damaged_seq_len = damaged_seq[0];
+            if pattern.len() >= damaged_seq_len
+                && pattern[..damaged_seq_len]
+                    .iter()
+                    .all(|c| !c.is_operational())
+            {
+                let pattern = pattern[damaged_seq_len..].to_vec();
+                let damaged_seq = damaged_seq[1..].to_vec();
+
+                if pattern.len() > 0 {
+                    if !pattern[0].is_damaged() {
+                        fast_arrangement_count(pattern[1..].to_vec(), damaged_seq)
+                    } else {
+                        0
+                    }
+                } else {
+                    fast_arrangement_count(pattern, damaged_seq)
+                }
+            } else {
+                0
+            }
+        }
+        Unknown => {
+            let mut acc = 0;
+            acc += fast_arrangement_count(pattern[1..].to_vec(), damaged_seq.clone());
+            let damaged_seq_len = damaged_seq[0];
+            if pattern.len() >= damaged_seq_len
+                && pattern[..damaged_seq_len]
+                    .iter()
+                    .all(|c| !c.is_operational())
+            {
+                let pattern = pattern[damaged_seq_len..].to_vec();
+                let damaged_seq = damaged_seq[1..].to_vec();
+                if pattern.len() > 0 {
+                    if !pattern[0].is_damaged() {
+                        acc += fast_arrangement_count(pattern[1..].to_vec(), damaged_seq);
+                    }
+                } else {
+                    acc += fast_arrangement_count(pattern, damaged_seq);
+                }
+            }
+            acc
+        }
+    }
 }
