@@ -148,6 +148,32 @@ fn parse_line(value: String) -> (Vec<Cell>, Vec<usize>) {
     (pattern, damage_seq)
 }
 
+type Pattern = Vec<Cell>;
+type DamagedSeq = Vec<usize>;
+
+fn extend_input((mut pattern, mut damaged_seq): (Pattern, DamagedSeq)) -> (Pattern, DamagedSeq) {
+    pattern.extend(std::iter::repeat(pattern.clone()).take(4).flatten());
+    damaged_seq.extend(std::iter::repeat(damaged_seq.clone()).take(4).flatten());
+    (pattern, damaged_seq)
+}
+
+fn fast_arrangement_count(pattern: &[Cell], damaged_seq: &[usize]) -> usize {
+    unimplemented!()
+}
+
+mod part_two {
+    use super::*;
+
+    pub fn part_two() -> usize {
+        read_input()
+            .map(Result::unwrap)
+            .map(parse_line)
+            .map(extend_input)
+            .map(|(pattern, damaged_seq)| fast_arrangement_count(&pattern, &damaged_seq))
+            .sum::<usize>()
+    }
+}
+
 fn main() {
-    part_one::part_one();
+    // part_one::part_one();
 }
