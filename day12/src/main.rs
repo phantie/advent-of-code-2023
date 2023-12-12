@@ -1,4 +1,4 @@
-#![allow(unused)]
+#[allow(unused)]
 
 mod part_one {
     use super::*;
@@ -7,7 +7,7 @@ mod part_one {
         read_input()
             .map(Result::unwrap)
             .map(parse_line)
-            .map(|(pattern, damaged_seq)| get_possible_combinations(pattern, damaged_seq))
+            .map(|(pattern, damaged_seq)| fast_arrangement_count(pattern, damaged_seq))
             .sum::<usize>()
     }
 
@@ -18,7 +18,28 @@ mod part_one {
     }
 }
 
+mod part_two {
+    use super::*;
+
+    pub fn part_two() -> usize {
+        read_input()
+            .map(Result::unwrap)
+            .map(parse_line)
+            .map(extend_input)
+            .map(|(pattern, damaged_seq)| fast_arrangement_count(pattern, damaged_seq))
+            .sum::<usize>()
+    }
+
+    #[cfg(test)]
+    #[ignore]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 83317216247365);
+    }
+}
+
 // relatively slow, but clean
+#[allow(unused)]
 fn arrangement_count(pattern: &[Cell], damaged_seq: &[usize]) -> usize {
     fn matches_pattern(pattern: &[Cell], perm: &[Cell]) -> bool {
         pattern
@@ -161,39 +182,15 @@ fn extend_input((mut pattern, mut damaged_seq): (Pattern, DamagedSeq)) -> (Patte
     (pattern, damaged_seq)
 }
 
-fn fast_arrangement_count(pattern: &[Cell], damaged_seq: &[usize]) -> usize {
-    unimplemented!()
-}
-
-mod part_two {
-    use super::*;
-
-    pub fn part_two() -> usize {
-        read_input()
-            .map(Result::unwrap)
-            .map(parse_line)
-            .map(extend_input)
-            .map(|(pattern, damaged_seq)| get_possible_combinations(pattern, damaged_seq))
-            .sum::<usize>()
-    }
-
-    #[cfg(test)]
-    #[ignore]
-    #[test]
-    fn test_part_two() {
-        assert_eq!(part_two(), 83317216247365);
-    }
-}
-
 fn main() {
     let part_one = part_one::part_one();
     dbg!(part_one);
-    // let part_two = part_two::part_two();
-    // dbg!(part_two);
+    let part_two = part_two::part_two();
+    dbg!(part_two);
 }
 
 #[memoize::memoize]
-fn get_possible_combinations(pattern: Vec<Cell>, damaged_seq: Vec<usize>) -> usize {
+fn fast_arrangement_count(pattern: Vec<Cell>, damaged_seq: Vec<usize>) -> usize {
     if damaged_seq.len() == 0 {
         // check no damaged cells left
         // if any: 0 else: 1
@@ -208,8 +205,8 @@ fn get_possible_combinations(pattern: Vec<Cell>, damaged_seq: Vec<usize>) -> usi
     use Cell::*;
     match pattern[0] {
         Operational => {
-            // Case 1: pattern starts with dots -- skip the dots
-            get_possible_combinations(
+            // skip operational
+            fast_arrangement_count(
                 pattern
                     .clone()
                     .into_iter()
@@ -219,7 +216,6 @@ fn get_possible_combinations(pattern: Vec<Cell>, damaged_seq: Vec<usize>) -> usi
             )
         }
         Damaged => {
-            // Case 2: pattern starts with a hash -- try to match it with a group
             let damaged_seq_len = damaged_seq[0];
             if pattern.len() >= damaged_seq_len
                 && pattern[..damaged_seq_len]
@@ -231,21 +227,20 @@ fn get_possible_combinations(pattern: Vec<Cell>, damaged_seq: Vec<usize>) -> usi
 
                 if pattern.len() > 0 {
                     if !pattern[0].is_damaged() {
-                        get_possible_combinations(pattern[1..].to_vec(), damaged_seq)
+                        fast_arrangement_count(pattern[1..].to_vec(), damaged_seq)
                     } else {
                         0
                     }
                 } else {
-                    get_possible_combinations(pattern, damaged_seq)
+                    fast_arrangement_count(pattern, damaged_seq)
                 }
             } else {
                 0
             }
         }
         Unknown => {
-            // Case 3: pattern starts with a question mark -- either match it or don't
             let mut acc = 0;
-            acc += get_possible_combinations(pattern[1..].to_vec(), damaged_seq.clone());
+            acc += fast_arrangement_count(pattern[1..].to_vec(), damaged_seq.clone());
             let damaged_seq_len = damaged_seq[0];
             if pattern.len() >= damaged_seq_len
                 && pattern[..damaged_seq_len]
@@ -256,10 +251,10 @@ fn get_possible_combinations(pattern: Vec<Cell>, damaged_seq: Vec<usize>) -> usi
                 let damaged_seq = damaged_seq[1..].to_vec();
                 if pattern.len() > 0 {
                     if !pattern[0].is_damaged() {
-                        acc += get_possible_combinations(pattern[1..].to_vec(), damaged_seq);
+                        acc += fast_arrangement_count(pattern[1..].to_vec(), damaged_seq);
                     }
                 } else {
-                    acc += get_possible_combinations(pattern, damaged_seq);
+                    acc += fast_arrangement_count(pattern, damaged_seq);
                 }
             }
             acc
