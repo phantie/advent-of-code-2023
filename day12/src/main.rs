@@ -152,7 +152,11 @@ type Pattern = Vec<Cell>;
 type DamagedSeq = Vec<usize>;
 
 fn extend_input((mut pattern, mut damaged_seq): (Pattern, DamagedSeq)) -> (Pattern, DamagedSeq) {
-    pattern.extend(std::iter::repeat(pattern.clone()).take(4).flatten());
+    pattern.extend(
+        std::iter::repeat(std::iter::once(Cell::Unknown).chain(pattern.clone().into_iter()))
+            .take(4)
+            .flatten(),
+    );
     damaged_seq.extend(std::iter::repeat(damaged_seq.clone()).take(4).flatten());
     (pattern, damaged_seq)
 }
