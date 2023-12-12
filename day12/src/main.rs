@@ -7,7 +7,7 @@ mod part_one {
         read_input()
             .map(Result::unwrap)
             .map(parse_line)
-            .map(|(pattern, damaged_seq)| arrangement_count(&pattern, &damaged_seq))
+            .map(|(pattern, damaged_seq)| get_possible_combinations(pattern, damaged_seq))
             .sum::<usize>()
     }
 
@@ -45,7 +45,7 @@ fn arrangement_count(pattern: &[Cell], damaged_seq: &[usize]) -> usize {
         .count()
 }
 
-#[derive(Clone, Debug, PartialEq, strum::EnumIs)]
+#[derive(Clone, Copy, Debug, PartialEq, strum::EnumIs, Eq, Hash)]
 enum Cell {
     Unknown,
     Operational,
@@ -173,11 +173,96 @@ mod part_two {
             .map(Result::unwrap)
             .map(parse_line)
             .map(extend_input)
-            .map(|(pattern, damaged_seq)| fast_arrangement_count(&pattern, &damaged_seq))
+            .map(|(pattern, damaged_seq)| get_possible_combinations(pattern, damaged_seq))
             .sum::<usize>()
+    }
+
+    #[cfg(test)]
+    #[ignore]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 83317216247365);
     }
 }
 
 fn main() {
-    // part_one::part_one();
+    let part_one = part_one::part_one();
+    dbg!(part_one);
+    // let part_two = part_two::part_two();
+    // dbg!(part_two);
+}
+
+#[memoize::memoize]
+fn get_possible_combinations(pattern: Vec<Cell>, damaged_seq: Vec<usize>) -> usize {
+    if damaged_seq.len() == 0 {
+        // check no damaged cells left
+        // if any: 0 else: 1
+        return pattern.iter().all(|c| !c.is_damaged()) as usize;
+    } else {
+        // if damaged_seq is not consumed but pattern is: 0
+        if pattern.len() == 0 {
+            return 0;
+        }
+    }
+
+    use Cell::*;
+    match pattern[0] {
+        Operational => {
+            // Case 1: pattern starts with dots -- skip the dots
+            get_possible_combinations(
+                pattern
+                    .clone()
+                    .into_iter()
+                    .skip_while(|c| c.is_operational())
+                    .collect(),
+                damaged_seq,
+            )
+        }
+        Damaged => {
+            // Case 2: pattern starts with a hash -- try to match it with a group
+            let damaged_seq_len = damaged_seq[0];
+            if pattern.len() >= damaged_seq_len
+                && pattern[..damaged_seq_len]
+                    .iter()
+                    .all(|c| !c.is_operational())
+            {
+                let pattern = pattern[damaged_seq_len..].to_vec();
+                let damaged_seq = damaged_seq[1..].to_vec();
+
+                if pattern.len() > 0 {
+                    if !pattern[0].is_damaged() {
+                        get_possible_combinations(pattern[1..].to_vec(), damaged_seq)
+                    } else {
+                        0
+                    }
+                } else {
+                    get_possible_combinations(pattern, damaged_seq)
+                }
+            } else {
+                0
+            }
+        }
+        Unknown => {
+            // Case 3: pattern starts with a question mark -- either match it or don't
+            let mut acc = 0;
+            acc += get_possible_combinations(pattern[1..].to_vec(), damaged_seq.clone());
+            let damaged_seq_len = damaged_seq[0];
+            if pattern.len() >= damaged_seq_len
+                && pattern[..damaged_seq_len]
+                    .iter()
+                    .all(|c| !c.is_operational())
+            {
+                let pattern = pattern[damaged_seq_len..].to_vec();
+                let damaged_seq = damaged_seq[1..].to_vec();
+                if pattern.len() > 0 {
+                    if !pattern[0].is_damaged() {
+                        acc += get_possible_combinations(pattern[1..].to_vec(), damaged_seq);
+                    }
+                } else {
+                    acc += get_possible_combinations(pattern, damaged_seq);
+                }
+            }
+            acc
+        }
+    }
 }
