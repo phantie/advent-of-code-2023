@@ -31,6 +31,19 @@ mod part_two {
     }
 }
 
+type Index = usize;
+type AB = (Index, Index);
+
+type Row = Vec<Cell>;
+type Group = Vec<Row>;
+type Input = Vec<Group>;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Cell {
+    Ash,
+    Rock,
+}
+
 fn check_full_col_reflection_smudged(group: &Group, ab: AB) -> Option<usize> {
     check_full_reflection_smudged(group, ab, get_column, width)
 }
@@ -186,19 +199,6 @@ fn calc_group_smudged(group: Group) -> usize {
         .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
 
     col_reflection.unwrap_or(0) + row_reflection.unwrap_or(0) * 100
-}
-
-type Index = usize;
-type AB = (Index, Index);
-
-type Row = Vec<Cell>;
-type Group = Vec<Row>;
-type Input = Vec<Group>;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum Cell {
-    Ash,
-    Rock,
 }
 
 fn generate_initital_column_indeces(group: &Group) -> Vec<AB> {
