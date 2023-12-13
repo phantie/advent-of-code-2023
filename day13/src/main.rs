@@ -98,70 +98,53 @@ fn get_row(group: &Group, row: usize) -> Vec<Cell> {
     group[row].clone()
 }
 
-fn check_column_reflection(group: &Group, (l, r): (usize, usize)) -> bool {
-    let l_col = get_column(group, l);
-    let r_col = get_column(group, r);
-    l_col == r_col
+type Index = usize;
+type AB = (Index, Index);
+
+fn check_reflection(group: &Group, (a, b): AB, f: impl Fn(&Group, Index) -> Vec<Cell>) -> bool {
+    f(group, a) == f(group, b)
 }
 
-fn check_row_reflection(group: &Group, (u, l): (usize, usize)) -> bool {
-    let u_row = get_row(group, u);
-    let l_row = get_row(group, l);
-    u_row == l_row
+fn check_reflection_smudged(
+    group: &Group,
+    (a, b): AB,
+    f: impl Fn(&Group, Index) -> Vec<Cell>,
+) -> (bool, FixedSmuged) {
+    let a = f(group, a);
+    let b = f(group, b);
+
+    let eq = a
+        .clone()
+        .into_iter()
+        .zip(b.into_iter())
+        .filter(|(a, b)| a == b)
+        .count();
+
+    if eq == a.len() {
+        (true, false)
+    } else if eq + 1 == a.len() {
+        (true, true)
+    } else {
+        (false, false)
+    }
 }
 
 type FixedSmuged = bool;
 
-fn check_row_reflection_smudged(group: &Group, (u, l): (usize, usize)) -> (bool, FixedSmuged) {
-    let u_row = get_row(group, u);
-    let l_row = get_row(group, l);
-    let eq = u_row
-        .clone()
-        .into_iter()
-        .zip(l_row.into_iter())
-        .filter(|(u, l)| u == l)
-        .count();
-
-    if eq == u_row.len() {
-        (true, false)
-    } else if eq + 1 == u_row.len() {
-        (true, true)
-    } else {
-        (false, false)
-    }
-}
-
-fn check_col_reflection_smudged(group: &Group, (l, r): (usize, usize)) -> (bool, FixedSmuged) {
-    let l_col = get_column(group, l);
-    let r_col = get_column(group, r);
-    let eq = l_col
-        .clone()
-        .into_iter()
-        .zip(r_col.into_iter())
-        .filter(|(l, r)| l == r)
-        .count();
-
-    if eq == l_col.len() {
-        (true, false)
-    } else if eq + 1 == l_col.len() {
-        (true, true)
-    } else {
-        (false, false)
-    }
-}
-
-fn check_full_column_reflection_smudged(
+fn check_full_reflection_smudged(
     group: &Group,
-    (initital_l, initital_r): (usize, usize),
+    (initital_a, initital_b): AB,
+    f: impl Fn(&Group, Index) -> Vec<Cell> + Clone,
+    upper_limit: impl Fn(&Group) -> usize,
 ) -> Option<usize> {
-    let (mut l, mut r) = (Some(initital_l), Some(initital_r));
+    let (mut a, mut b) = (Some(initital_a), Some(initital_b));
 
     let mut fixed_smudge = false;
     loop {
-        match (l, r) {
+        match (a, b) {
             (None, None) => unreachable!(),
-            (Some(_l), Some(_r)) => {
-                match check_col_reflection_smudged(group, (_l, _r)) {
+            (Some(_a), Some(_b)) => {
+                match check_reflection_smudged(group, (_a, _b), f.clone()) {
                     (true, true) => {
                         if fixed_smudge {
                             return None;
@@ -176,18 +159,18 @@ fn check_full_column_reflection_smudged(
                     (false, true) => unreachable!(),
                 }
 
-                (l, r) = move_away_indeces((_l, _r), 1, width(group));
+                (a, b) = move_away_indeces((_a, _b), 1, upper_limit(group));
             }
             (Some(_), None) => {
                 return if fixed_smudge {
-                    Some(initital_l + 1)
+                    Some(initital_a + 1)
                 } else {
                     None
                 };
             }
             (None, Some(_)) => {
                 return if fixed_smudge {
-                    Some(initital_l + 1)
+                    Some(initital_a + 1)
                 } else {
                     None
                 };
@@ -196,101 +179,29 @@ fn check_full_column_reflection_smudged(
     }
 }
 
-fn check_full_column_reflection(
+fn check_full_reflection(
     group: &Group,
-    (initital_l, initital_r): (usize, usize),
+    (initital_a, initital_b): AB,
+    f: impl Fn(&Group, Index) -> Vec<Cell> + Clone,
+    upper_limit: impl Fn(&Group) -> usize,
 ) -> Option<usize> {
-    let (mut l, mut r) = (Some(initital_l), Some(initital_r));
+    let (mut a, mut b) = (Some(initital_a), Some(initital_b));
 
     loop {
-        match (l, r) {
+        match (a, b) {
             (None, None) => unreachable!(),
-            (Some(_l), Some(_r)) => {
-                if !check_column_reflection(group, (_l, _r)) {
+            (Some(_a), Some(_b)) => {
+                if !check_reflection(group, (_a, _b), f.clone()) {
                     return None;
                 }
 
-                (l, r) = move_away_indeces((_l, _r), 1, width(group));
+                (a, b) = move_away_indeces((_a, _b), 1, upper_limit(group));
             }
             (Some(_l), None) => {
-                return Some(initital_l + 1);
+                return Some(initital_a + 1);
             }
             (None, Some(_r)) => {
-                return Some(initital_l + 1);
-            }
-        }
-    }
-}
-
-fn check_full_row_reflection_smudged(
-    group: &Group,
-    (initital_u, initital_l): (usize, usize),
-) -> Option<usize> {
-    let (mut u, mut l) = (Some(initital_u), Some(initital_l));
-
-    let mut fixed_smudge = false;
-    loop {
-        match (u, l) {
-            (None, None) => unreachable!(),
-            (Some(_u), Some(_l)) => {
-                match check_row_reflection_smudged(group, (_u, _l)) {
-                    (true, true) => {
-                        if fixed_smudge {
-                            println!("1");
-                            return None;
-                        } else {
-                            fixed_smudge = true;
-                        }
-                    }
-                    (true, false) => {}
-                    (false, false) => {
-                        println!("1");
-                        return None;
-                    }
-                    (false, true) => unreachable!(),
-                }
-
-                (u, l) = move_away_indeces((_u, _l), 1, height(group));
-            }
-            (Some(_), None) => {
-                return if fixed_smudge {
-                    Some(initital_u + 1)
-                } else {
-                    None
-                };
-            }
-            (None, Some(_)) => {
-                return if fixed_smudge {
-                    Some(initital_u + 1)
-                } else {
-                    None
-                };
-            }
-        }
-    }
-}
-
-fn check_full_row_reflection(
-    group: &Group,
-    (initital_u, initital_l): (usize, usize),
-) -> Option<usize> {
-    let (mut u, mut l) = (Some(initital_u), Some(initital_l));
-
-    loop {
-        match (u, l) {
-            (None, None) => unreachable!(),
-            (Some(_u), Some(_l)) => {
-                if !check_row_reflection(group, (_u, _l)) {
-                    return None;
-                }
-
-                (u, l) = move_away_indeces((_u, _l), 1, height(group));
-            }
-            (Some(_), None) => {
-                return Some(initital_u + 1);
-            }
-            (None, Some(_)) => {
-                return Some(initital_u + 1);
+                return Some(initital_a + 1);
             }
         }
     }
@@ -301,13 +212,13 @@ fn calc_group(group: Group) -> usize {
 
     let col_reflection = col_indeces
         .into_iter()
-        .find_map(|(l, r)| check_full_column_reflection(&group, (l, r)));
+        .find_map(|(l, r)| check_full_reflection(&group, (l, r), get_column, width));
 
     let row_indeces = generate_initial_row_indeces(&group);
 
     let row_reflection = row_indeces
         .into_iter()
-        .find_map(|(l, r)| check_full_row_reflection(&group, (l, r)));
+        .find_map(|(l, r)| check_full_reflection(&group, (l, r), get_row, height));
 
     col_reflection.unwrap_or(0) + row_reflection.unwrap_or(0) * 100
 }
@@ -317,13 +228,13 @@ fn calc_group_smudged(group: Group) -> usize {
 
     let col_reflection = col_indeces
         .into_iter()
-        .find_map(|(l, r)| check_full_column_reflection_smudged(&group, (l, r)));
+        .find_map(|(l, r)| check_full_reflection_smudged(&group, (l, r), get_column, width));
 
     let row_indeces = generate_initial_row_indeces(&group);
 
     let row_reflection = row_indeces
         .into_iter()
-        .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
+        .find_map(|(l, r)| check_full_reflection_smudged(&group, (l, r), get_row, height));
 
     col_reflection.unwrap_or(0) + row_reflection.unwrap_or(0) * 100
 }
@@ -380,7 +291,7 @@ mod tests {
 
         let r = row_indeces
             .into_iter()
-            .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
+            .find_map(|(l, r)| check_full_reflection_smudged(&group, (l, r), get_row, height));
         assert_eq!(r, Some(3));
     }
 
@@ -392,7 +303,7 @@ mod tests {
 
         let r = row_indeces
             .into_iter()
-            .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
+            .find_map(|(l, r)| check_full_reflection_smudged(&group, (l, r), get_row, height));
         assert_eq!(r, Some(1));
     }
 
@@ -404,7 +315,7 @@ mod tests {
 
         let r = col_indeces
             .into_iter()
-            .find_map(|(l, r)| check_full_column_reflection(&group, (l, r)));
+            .find_map(|(l, r)| check_full_reflection(&group, (l, r), get_column, width));
 
         assert_eq!(r, Some(5));
     }
@@ -417,7 +328,7 @@ mod tests {
 
         let r = row_indeces
             .into_iter()
-            .find_map(|(l, r)| check_full_row_reflection(&group, (l, r)));
+            .find_map(|(l, r)| check_full_reflection(&group, (l, r), get_row, height));
 
         assert_eq!(r, Some(4));
     }
