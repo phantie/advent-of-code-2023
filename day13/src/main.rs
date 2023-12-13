@@ -44,6 +44,63 @@ enum Cell {
     Rock,
 }
 
+fn check_full_col_reflection(group: &Group, ab: AB) -> Option<usize> {
+    check_full_reflection(group, ab, get_column, width)
+}
+
+fn check_full_row_reflection(group: &Group, ab: AB) -> Option<usize> {
+    check_full_reflection(group, ab, get_row, height)
+}
+
+fn check_full_reflection(
+    group: &Group,
+    (initial_a, initial_b): AB,
+    get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell>,
+    upper_limit: impl Fn(&Group) -> usize,
+) -> Option<usize> {
+    fn check_reflection(
+        group: &Group,
+        (a, b): AB,
+        get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell>,
+    ) -> bool {
+        get_row_or_col(group, a) == get_row_or_col(group, b)
+    }
+
+    let (mut a, mut b) = (Some(initial_a), Some(initial_b));
+
+    loop {
+        match (a, b) {
+            (None, None) => unreachable!(),
+            (Some(_a), Some(_b)) => {
+                if !check_reflection(group, (_a, _b), &get_row_or_col) {
+                    return None;
+                }
+
+                (a, b) = move_away_indeces((_a, _b), 1, upper_limit(group));
+            }
+            (Some(_), None) | (None, Some(_)) => {
+                return Some(initial_a + 1);
+            }
+        }
+    }
+}
+
+fn calc_group(group: Group) -> usize {
+    let col_indeces = generate_initital_column_indeces(&group);
+
+    let col_reflection = col_indeces
+        .into_iter()
+        .find_map(|(l, r)| check_full_col_reflection(&group, (l, r)));
+
+    let row_indeces = generate_initial_row_indeces(&group);
+
+    let row_reflection = row_indeces
+        .into_iter()
+        .find_map(|(l, r)| check_full_row_reflection(&group, (l, r)));
+
+    col_reflection.unwrap_or(0) + row_reflection.unwrap_or(0) * 100
+}
+
 fn check_full_col_reflection_smudged(group: &Group, ab: AB) -> Option<usize> {
     check_full_reflection_smudged(group, ab, get_column, width)
 }
@@ -107,14 +164,7 @@ fn check_full_reflection_smudged(
 
                 (a, b) = move_away_indeces((_a, _b), 1, upper_limit(group));
             }
-            (Some(_), None) => {
-                return if fixed_smudge {
-                    Some(initial_a + 1)
-                } else {
-                    None
-                };
-            }
-            (None, Some(_)) => {
+            (Some(_), None) | (None, Some(_)) => {
                 return if fixed_smudge {
                     Some(initial_a + 1)
                 } else {
@@ -123,66 +173,6 @@ fn check_full_reflection_smudged(
             }
         }
     }
-}
-
-fn check_full_col_reflection(group: &Group, ab: AB) -> Option<usize> {
-    check_full_reflection(group, ab, get_column, width)
-}
-
-fn check_full_row_reflection(group: &Group, ab: AB) -> Option<usize> {
-    check_full_reflection(group, ab, get_row, height)
-}
-
-fn check_full_reflection(
-    group: &Group,
-    (initial_a, initial_b): AB,
-    get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell>,
-    upper_limit: impl Fn(&Group) -> usize,
-) -> Option<usize> {
-    fn check_reflection(
-        group: &Group,
-        (a, b): AB,
-        get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell>,
-    ) -> bool {
-        get_row_or_col(group, a) == get_row_or_col(group, b)
-    }
-
-    let (mut a, mut b) = (Some(initial_a), Some(initial_b));
-
-    loop {
-        match (a, b) {
-            (None, None) => unreachable!(),
-            (Some(_a), Some(_b)) => {
-                if !check_reflection(group, (_a, _b), &get_row_or_col) {
-                    return None;
-                }
-
-                (a, b) = move_away_indeces((_a, _b), 1, upper_limit(group));
-            }
-            (Some(_l), None) => {
-                return Some(initial_a + 1);
-            }
-            (None, Some(_r)) => {
-                return Some(initial_a + 1);
-            }
-        }
-    }
-}
-
-fn calc_group(group: Group) -> usize {
-    let col_indeces = generate_initital_column_indeces(&group);
-
-    let col_reflection = col_indeces
-        .into_iter()
-        .find_map(|(l, r)| check_full_col_reflection(&group, (l, r)));
-
-    let row_indeces = generate_initial_row_indeces(&group);
-
-    let row_reflection = row_indeces
-        .into_iter()
-        .find_map(|(l, r)| check_full_row_reflection(&group, (l, r)));
-
-    col_reflection.unwrap_or(0) + row_reflection.unwrap_or(0) * 100
 }
 
 fn calc_group_smudged(group: Group) -> usize {
