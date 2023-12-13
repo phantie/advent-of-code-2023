@@ -31,112 +31,37 @@ mod part_two {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum Cell {
-    Ash,
-    Rock,
-}
-
-fn main() {}
-
-fn input() -> &'static str {
-    include_str!("../input.txt")
-}
-
-type Row = Vec<Cell>;
-type Group = Vec<Row>;
-type Input = Vec<Group>;
-
-fn generate_initital_column_indeces(group: &Group) -> Vec<(usize, usize)> {
-    generate_initial_indeces(width(group))
-}
-
-fn generate_initial_row_indeces(group: &Group) -> Vec<(usize, usize)> {
-    generate_initial_indeces(height(group))
-}
-
-fn generate_initial_indeces(count: usize) -> Vec<(usize, usize)> {
-    (0..count)
-        .collect::<Vec<_>>()
-        .as_slice()
-        .windows(2)
-        .map(|window| {
-            let (l, r) = (window[0], window[1]);
-            (l, r)
-        })
-        .collect()
-}
-
-fn move_away_indeces(
-    (a, b): (usize, usize),
-    c: usize,
-    upper_limit: usize,
-) -> (Option<usize>, Option<usize>) {
-    (
-        if c > a { None } else { Some(a - c) },
-        if c + b >= upper_limit {
-            None
-        } else {
-            Some(b + c)
-        },
-    )
-}
-
-fn width(group: &Group) -> usize {
-    group[0].len()
-}
-
-fn height(group: &Group) -> usize {
-    group.len()
-}
-
-fn get_column(group: &Group, col: usize) -> Vec<Cell> {
-    group.into_iter().map(|row| row[col]).collect()
-}
-
-fn get_row(group: &Group, row: usize) -> Vec<Cell> {
-    group[row].clone()
-}
-
-type Index = usize;
-type AB = (Index, Index);
-
-fn check_reflection(group: &Group, (a, b): AB, f: impl Fn(&Group, Index) -> Vec<Cell>) -> bool {
-    f(group, a) == f(group, b)
-}
-
-fn check_reflection_smudged(
-    group: &Group,
-    (a, b): AB,
-    f: impl Fn(&Group, Index) -> Vec<Cell>,
-) -> (bool, FixedSmuged) {
-    let a = f(group, a);
-    let b = f(group, b);
-
-    let eq = a
-        .clone()
-        .into_iter()
-        .zip(b.into_iter())
-        .filter(|(a, b)| a == b)
-        .count();
-
-    if eq == a.len() {
-        (true, false)
-    } else if eq + 1 == a.len() {
-        (true, true)
-    } else {
-        (false, false)
-    }
-}
-
-type FixedSmuged = bool;
-
 fn check_full_reflection_smudged(
     group: &Group,
     (initital_a, initital_b): AB,
-    f: impl Fn(&Group, Index) -> Vec<Cell> + Clone,
+    get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell> + Clone,
     upper_limit: impl Fn(&Group) -> usize,
 ) -> Option<usize> {
+    type FixedSmuged = bool;
+    fn check_reflection_smudged(
+        group: &Group,
+        (a, b): AB,
+        get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell>,
+    ) -> (bool, FixedSmuged) {
+        let a = get_row_or_col(group, a);
+        let b = get_row_or_col(group, b);
+
+        let eq = a
+            .clone()
+            .into_iter()
+            .zip(b.into_iter())
+            .filter(|(a, b)| a == b)
+            .count();
+
+        if eq == a.len() {
+            (true, false)
+        } else if eq + 1 == a.len() {
+            (true, true)
+        } else {
+            (false, false)
+        }
+    }
+
     let (mut a, mut b) = (Some(initital_a), Some(initital_b));
 
     let mut fixed_smudge = false;
@@ -144,7 +69,7 @@ fn check_full_reflection_smudged(
         match (a, b) {
             (None, None) => unreachable!(),
             (Some(_a), Some(_b)) => {
-                match check_reflection_smudged(group, (_a, _b), f.clone()) {
+                match check_reflection_smudged(group, (_a, _b), get_row_or_col.clone()) {
                     (true, true) => {
                         if fixed_smudge {
                             return None;
@@ -182,16 +107,24 @@ fn check_full_reflection_smudged(
 fn check_full_reflection(
     group: &Group,
     (initital_a, initital_b): AB,
-    f: impl Fn(&Group, Index) -> Vec<Cell> + Clone,
+    get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell> + Clone,
     upper_limit: impl Fn(&Group) -> usize,
 ) -> Option<usize> {
+    fn check_reflection(
+        group: &Group,
+        (a, b): AB,
+        get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell>,
+    ) -> bool {
+        get_row_or_col(group, a) == get_row_or_col(group, b)
+    }
+
     let (mut a, mut b) = (Some(initital_a), Some(initital_b));
 
     loop {
         match (a, b) {
             (None, None) => unreachable!(),
             (Some(_a), Some(_b)) => {
-                if !check_reflection(group, (_a, _b), f.clone()) {
+                if !check_reflection(group, (_a, _b), get_row_or_col.clone()) {
                     return None;
                 }
 
@@ -239,6 +172,66 @@ fn calc_group_smudged(group: Group) -> usize {
     col_reflection.unwrap_or(0) + row_reflection.unwrap_or(0) * 100
 }
 
+type Index = usize;
+type AB = (Index, Index);
+
+type Row = Vec<Cell>;
+type Group = Vec<Row>;
+type Input = Vec<Group>;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Cell {
+    Ash,
+    Rock,
+}
+
+fn generate_initital_column_indeces(group: &Group) -> Vec<AB> {
+    generate_initial_indeces(width(group))
+}
+
+fn generate_initial_row_indeces(group: &Group) -> Vec<AB> {
+    generate_initial_indeces(height(group))
+}
+
+fn generate_initial_indeces(count: usize) -> Vec<AB> {
+    (0..count)
+        .collect::<Vec<_>>()
+        .as_slice()
+        .windows(2)
+        .map(|window| {
+            let (l, r) = (window[0], window[1]);
+            (l, r)
+        })
+        .collect()
+}
+
+fn move_away_indeces((a, b): AB, c: usize, upper_limit: usize) -> (Option<usize>, Option<usize>) {
+    (
+        if c > a { None } else { Some(a - c) },
+        if c + b >= upper_limit {
+            None
+        } else {
+            Some(b + c)
+        },
+    )
+}
+
+fn width(group: &Group) -> usize {
+    group[0].len()
+}
+
+fn height(group: &Group) -> usize {
+    group.len()
+}
+
+fn get_column(group: &Group, col: usize) -> Vec<Cell> {
+    group.into_iter().map(|row| row[col]).collect()
+}
+
+fn get_row(group: &Group, row: usize) -> Vec<Cell> {
+    group[row].clone()
+}
+
 fn parse_group(value: &str) -> Group {
     value
         .split("\n")
@@ -257,6 +250,12 @@ fn parse_group(value: &str) -> Group {
 fn parse_input() -> Input {
     let input = input();
     input.split("\n\n").map(parse_group).collect()
+}
+
+fn main() {}
+
+fn input() -> &'static str {
+    include_str!("../input.txt")
 }
 
 #[cfg(test)]
