@@ -13,15 +13,70 @@ mod part_one {
     }
 }
 
+mod part_two {
+    use super::*;
+
+    #[allow(unused)]
+    fn part_two() -> usize {
+        parse_input()
+            .into_iter()
+            .map(calc_group_smudged)
+            .sum::<usize>()
+    }
+
+    #[cfg(test)]
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 44615);
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Cell {
     Ash,
     Rock,
 }
 
-fn main() {
-    let r = parse_input().into_iter().map(calc_group).sum::<usize>();
-    dbg!(r);
+fn main() {}
+
+#[test]
+fn test_calc_test_group_1_smudged() {
+    let test_input = "#.##..##.
+..#.##.#.
+##......#
+##......#
+..#.##.#.
+..##..##.
+#.#.##.#.";
+
+    let group = parse_group(test_input);
+
+    let row_indeces = generate_initial_row_indeces(&group);
+
+    let r = row_indeces
+        .into_iter()
+        .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
+    assert_eq!(r, Some(3));
+}
+
+#[test]
+fn test_calc_test_group_2_smudged() {
+    let test_input = "#...##..#
+#....#..#
+..##..###
+#####.##.
+#####.##.
+..##..###
+#....#..#";
+
+    let group = parse_group(test_input);
+
+    let row_indeces = generate_initial_row_indeces(&group);
+
+    let r = row_indeces
+        .into_iter()
+        .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
+    assert_eq!(r, Some(1));
 }
 
 #[test]
@@ -137,6 +192,92 @@ fn check_row_reflection(group: &Group, (u, l): (usize, usize)) -> bool {
     u_row == l_row
 }
 
+type FixedSmuged = bool;
+
+fn check_row_reflection_smudged(group: &Group, (u, l): (usize, usize)) -> (bool, FixedSmuged) {
+    let u_row = get_row(group, u);
+    let l_row = get_row(group, l);
+    let eq = u_row
+        .clone()
+        .into_iter()
+        .zip(l_row.into_iter())
+        .filter(|(u, l)| u == l)
+        .count();
+
+    if eq == u_row.len() {
+        (true, false)
+    } else if eq + 1 == u_row.len() {
+        (true, true)
+    } else {
+        (false, false)
+    }
+}
+
+fn check_col_reflection_smudged(group: &Group, (l, r): (usize, usize)) -> (bool, FixedSmuged) {
+    let l_col = get_column(group, l);
+    let r_col = get_column(group, r);
+    let eq = l_col
+        .clone()
+        .into_iter()
+        .zip(r_col.into_iter())
+        .filter(|(l, r)| l == r)
+        .count();
+
+    if eq == l_col.len() {
+        (true, false)
+    } else if eq + 1 == l_col.len() {
+        (true, true)
+    } else {
+        (false, false)
+    }
+}
+
+fn check_full_column_reflection_smudged(
+    group: &Group,
+    (initital_l, initital_r): (usize, usize),
+) -> Option<usize> {
+    let (mut l, mut r) = (Some(initital_l), Some(initital_r));
+
+    let mut fixed_smudge = false;
+    loop {
+        match (l, r) {
+            (None, None) => unreachable!(),
+            (Some(_l), Some(_r)) => {
+                match check_col_reflection_smudged(group, (_l, _r)) {
+                    (true, true) => {
+                        if fixed_smudge {
+                            return None;
+                        } else {
+                            fixed_smudge = true;
+                        }
+                    }
+                    (true, false) => {}
+                    (false, false) => {
+                        return None;
+                    }
+                    (false, true) => unreachable!(),
+                }
+
+                (l, r) = move_away_indeces((_l, _r), 1, width(group));
+            }
+            (Some(_), None) => {
+                return if fixed_smudge {
+                    Some(initital_l + 1)
+                } else {
+                    None
+                };
+            }
+            (None, Some(_)) => {
+                return if fixed_smudge {
+                    Some(initital_l + 1)
+                } else {
+                    None
+                };
+            }
+        }
+    }
+}
+
 fn check_full_column_reflection(
     group: &Group,
     (initital_l, initital_r): (usize, usize),
@@ -158,6 +299,54 @@ fn check_full_column_reflection(
             }
             (None, Some(_r)) => {
                 return Some(initital_l + 1);
+            }
+        }
+    }
+}
+
+fn check_full_row_reflection_smudged(
+    group: &Group,
+    (initital_u, initital_l): (usize, usize),
+) -> Option<usize> {
+    let (mut u, mut l) = (Some(initital_u), Some(initital_l));
+
+    let mut fixed_smudge = false;
+    loop {
+        match (u, l) {
+            (None, None) => unreachable!(),
+            (Some(_u), Some(_l)) => {
+                match check_row_reflection_smudged(group, (_u, _l)) {
+                    (true, true) => {
+                        if fixed_smudge {
+                            println!("1");
+                            return None;
+                        } else {
+                            fixed_smudge = true;
+                        }
+                    }
+                    (true, false) => {}
+                    (false, false) => {
+                        println!("1");
+                        return None;
+                    }
+                    (false, true) => unreachable!(),
+                }
+
+                (u, l) = move_away_indeces((_u, _l), 1, height(group));
+            }
+            (Some(_), None) => {
+                return if fixed_smudge {
+                    Some(initital_u + 1)
+                } else {
+                    None
+                };
+            }
+            (None, Some(_)) => {
+                return if fixed_smudge {
+                    Some(initital_u + 1)
+                } else {
+                    None
+                };
             }
         }
     }
@@ -196,15 +385,27 @@ fn calc_group(group: Group) -> usize {
         .into_iter()
         .find_map(|(l, r)| check_full_column_reflection(&group, (l, r)));
 
-    // dbg!(col_reflection);
-
     let row_indeces = generate_initial_row_indeces(&group);
 
     let row_reflection = row_indeces
         .into_iter()
         .find_map(|(l, r)| check_full_row_reflection(&group, (l, r)));
 
-    // dbg!(row_reflection);
+    col_reflection.unwrap_or(0) + row_reflection.unwrap_or(0) * 100
+}
+
+fn calc_group_smudged(group: Group) -> usize {
+    let col_indeces = generate_initital_column_indeces(&group);
+
+    let col_reflection = col_indeces
+        .into_iter()
+        .find_map(|(l, r)| check_full_column_reflection_smudged(&group, (l, r)));
+
+    let row_indeces = generate_initial_row_indeces(&group);
+
+    let row_reflection = row_indeces
+        .into_iter()
+        .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
 
     col_reflection.unwrap_or(0) + row_reflection.unwrap_or(0) * 100
 }
