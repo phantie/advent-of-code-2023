@@ -39,88 +39,6 @@ enum Cell {
 
 fn main() {}
 
-#[test]
-fn test_calc_test_group_1_smudged() {
-    let test_input = "#.##..##.
-..#.##.#.
-##......#
-##......#
-..#.##.#.
-..##..##.
-#.#.##.#.";
-
-    let group = parse_group(test_input);
-
-    let row_indeces = generate_initial_row_indeces(&group);
-
-    let r = row_indeces
-        .into_iter()
-        .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
-    assert_eq!(r, Some(3));
-}
-
-#[test]
-fn test_calc_test_group_2_smudged() {
-    let test_input = "#...##..#
-#....#..#
-..##..###
-#####.##.
-#####.##.
-..##..###
-#....#..#";
-
-    let group = parse_group(test_input);
-
-    let row_indeces = generate_initial_row_indeces(&group);
-
-    let r = row_indeces
-        .into_iter()
-        .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
-    assert_eq!(r, Some(1));
-}
-
-#[test]
-fn test_calc_test_group_1() {
-    let test_input = "#.##..##.
-..#.##.#.
-##......#
-##......#
-..#.##.#.
-..##..##.
-#.#.##.#.";
-
-    let group = parse_group(test_input);
-
-    let col_indeces = generate_initital_column_indeces(&group);
-
-    let r = col_indeces
-        .into_iter()
-        .find_map(|(l, r)| check_full_column_reflection(&group, (l, r)));
-
-    assert_eq!(r, Some(5));
-}
-
-#[test]
-fn test_calc_test_group_2() {
-    let test_input = "#...##..#
-#....#..#
-..##..###
-#####.##.
-#####.##.
-..##..###
-#....#..#";
-
-    let group = parse_group(test_input);
-
-    let row_indeces = generate_initial_row_indeces(&group);
-
-    let r = row_indeces
-        .into_iter()
-        .find_map(|(l, r)| check_full_row_reflection(&group, (l, r)));
-
-    assert_eq!(r, Some(4));
-}
-
 fn input() -> &'static str {
     include_str!("../input.txt")
 }
@@ -428,4 +346,79 @@ fn parse_group(value: &str) -> Group {
 fn parse_input() -> Input {
     let input = input();
     input.split("\n\n").map(parse_group).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_group_1() -> &'static str {
+        "#.##..##.
+..#.##.#.
+##......#
+##......#
+..#.##.#.
+..##..##.
+#.#.##.#."
+    }
+
+    fn test_group_2() -> &'static str {
+        "#...##..#
+#....#..#
+..##..###
+#####.##.
+#####.##.
+..##..###
+#....#..#"
+    }
+
+    #[test]
+    fn test_calc_test_group_1_smudged() {
+        let group = parse_group(test_group_1());
+
+        let row_indeces = generate_initial_row_indeces(&group);
+
+        let r = row_indeces
+            .into_iter()
+            .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
+        assert_eq!(r, Some(3));
+    }
+
+    #[test]
+    fn test_calc_test_group_2_smudged() {
+        let group = parse_group(test_group_2());
+
+        let row_indeces = generate_initial_row_indeces(&group);
+
+        let r = row_indeces
+            .into_iter()
+            .find_map(|(l, r)| check_full_row_reflection_smudged(&group, (l, r)));
+        assert_eq!(r, Some(1));
+    }
+
+    #[test]
+    fn test_calc_test_group_1() {
+        let group = parse_group(test_group_1());
+
+        let col_indeces = generate_initital_column_indeces(&group);
+
+        let r = col_indeces
+            .into_iter()
+            .find_map(|(l, r)| check_full_column_reflection(&group, (l, r)));
+
+        assert_eq!(r, Some(5));
+    }
+
+    #[test]
+    fn test_calc_test_group_2() {
+        let group = parse_group(test_group_2());
+
+        let row_indeces = generate_initial_row_indeces(&group);
+
+        let r = row_indeces
+            .into_iter()
+            .find_map(|(l, r)| check_full_row_reflection(&group, (l, r)));
+
+        assert_eq!(r, Some(4));
+    }
 }
