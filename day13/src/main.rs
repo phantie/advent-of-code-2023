@@ -34,7 +34,7 @@ mod part_two {
 fn check_full_reflection_smudged(
     group: &Group,
     (initital_a, initital_b): AB,
-    get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell> + Clone,
+    get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell>,
     upper_limit: impl Fn(&Group) -> usize,
 ) -> Option<usize> {
     type FixedSmuged = bool;
@@ -69,7 +69,7 @@ fn check_full_reflection_smudged(
         match (a, b) {
             (None, None) => unreachable!(),
             (Some(_a), Some(_b)) => {
-                match check_reflection_smudged(group, (_a, _b), get_row_or_col.clone()) {
+                match check_reflection_smudged(group, (_a, _b), &get_row_or_col) {
                     (true, true) => {
                         if fixed_smudge {
                             return None;
@@ -107,7 +107,7 @@ fn check_full_reflection_smudged(
 fn check_full_reflection(
     group: &Group,
     (initital_a, initital_b): AB,
-    get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell> + Clone,
+    get_row_or_col: impl Fn(&Group, Index) -> Vec<Cell>,
     upper_limit: impl Fn(&Group) -> usize,
 ) -> Option<usize> {
     fn check_reflection(
@@ -124,7 +124,7 @@ fn check_full_reflection(
         match (a, b) {
             (None, None) => unreachable!(),
             (Some(_a), Some(_b)) => {
-                if !check_reflection(group, (_a, _b), get_row_or_col.clone()) {
+                if !check_reflection(group, (_a, _b), &get_row_or_col) {
                     return None;
                 }
 
