@@ -2,10 +2,9 @@ mod part_one {
     use super::*;
 
     pub fn part_one() -> usize {
-        let space = parse_input();
-        (0..width(&space))
-            .map(|i| calc_weight(move_north(get_column(&space, i))))
-            .sum::<usize>()
+        space_weight(transpose(
+            iter_cols(parse_input()).map(move_north).collect(),
+        ))
     }
 
     #[cfg(test)]
@@ -19,33 +18,23 @@ mod part_two {
     use super::*;
 
     pub fn part_two() -> usize {
-        let _space = parse_input();
-
-        let mut space: Space = _space.clone();
-
         fn run_cycle(mut space: Space) -> Space {
-            space = (0..width(&space))
-                .map(|i| move_north(get_column(&space, i)))
-                .collect();
+            space = iter_cols(space).map(move_north).collect();
             space = transpose(space);
 
-            space = (0..height(&space))
-                .map(|i| move_west(get_row(&space, i)))
-                .collect();
+            space = iter_rows(space).map(move_west).collect();
 
-            space = (0..width(&space))
-                .map(|i| move_south(get_column(&space, i)))
-                .collect();
+            space = iter_cols(space).map(move_south).collect();
             space = transpose(space);
 
-            space = (0..height(&space))
-                .map(|i| move_east(get_row(&space, i)))
-                .collect();
+            space = iter_rows(space).map(move_east).collect();
 
             space
         }
 
-        let mut seen = vec![_space.clone()];
+        let space = parse_input();
+        let mut space: Space = space.clone();
+        let mut seen = vec![space.clone()];
 
         loop {
             space = run_cycle(space);
@@ -58,9 +47,7 @@ mod part_two {
                     let space =
                         seen[cycle_start + (1_000_000_000 - cycle_start) % cycle_len].clone();
 
-                    return (0..width(&space))
-                        .map(|i| calc_weight(get_column(&space, i)))
-                        .sum::<usize>();
+                    return space_weight(space);
                 }
             }
         }
@@ -85,12 +72,60 @@ type Column = CellSeq;
 type Row = CellSeq;
 type Space = Vec<Row>;
 
-fn width(space: &Space) -> usize {
-    space[0].len()
+enum MoveTo {
+    Start,
+    End,
 }
 
-fn height(space: &Space) -> usize {
-    space.len()
+fn roll_rocks(cells: CellSeq, move_to: MoveTo) -> Column {
+    use itertools::Itertools;
+
+    let mut new_vec = vec![];
+
+    for (i, group) in cells
+        .clone()
+        .into_iter()
+        .group_by(|c| c.is_cube_rock())
+        .into_iter()
+    {
+        if i {
+            new_vec.extend(group);
+        } else {
+            let this = group.collect::<Vec<_>>();
+            let round_rock_count = this.iter().filter(|c| c.is_rounded_rock()).count();
+
+            let round_rocks = (0..round_rock_count).map(|_| Cell::RoundedRock);
+            let empty_space = (0..this.len() - round_rock_count).map(|_| Cell::Empty);
+
+            match move_to {
+                MoveTo::Start => new_vec.extend(round_rocks.chain(empty_space)),
+                MoveTo::End => new_vec.extend(empty_space.chain(round_rocks)),
+            }
+        }
+    }
+
+    new_vec
+}
+
+fn space_weight(space: Space) -> usize {
+    fn col_weight(col: Column) -> usize {
+        col.clone()
+            .into_iter()
+            .enumerate()
+            .filter(|(_, c)| c.is_rounded_rock())
+            .map(|(i, _)| col.len() - i)
+            .sum::<usize>()
+    }
+
+    iter_cols(space).map(col_weight).sum::<usize>()
+}
+
+fn iter_cols(space: Space) -> impl Iterator<Item = Vec<Cell>> {
+    (0..width(&space)).map(move |i| get_column(&space, i))
+}
+
+fn iter_rows(space: Space) -> impl Iterator<Item = Vec<Cell>> {
+    (0..height(&space)).map(move |i| get_row(&space, i))
 }
 
 fn get_column(space: &Space, col: usize) -> Column {
@@ -101,23 +136,12 @@ fn get_row(space: &Space, row: usize) -> Row {
     space[row].clone()
 }
 
-fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
-    assert!(!v.is_empty());
-    let len = v[0].len();
-    let mut iters: Vec<_> = v.into_iter().map(|n| n.into_iter()).collect();
-    (0..len)
-        .map(|_| {
-            iters
-                .iter_mut()
-                .map(|n| n.next().unwrap())
-                .collect::<Vec<T>>()
-        })
-        .collect()
+fn width(space: &Space) -> usize {
+    space[0].len()
 }
 
-enum MoveTo {
-    Start,
-    End,
+fn height(space: &Space) -> usize {
+    space.len()
 }
 
 fn move_north(col: Column) -> Column {
@@ -136,44 +160,18 @@ fn move_east(row: Row) -> Row {
     roll_rocks(row, MoveTo::End)
 }
 
-fn roll_rocks(cells: CellSeq, move_to: MoveTo) -> Column {
-    use itertools::Itertools;
-
-    let mut new_vec = vec![];
-
-    for (i, group) in cells
-        .clone()
-        .into_iter()
-        .enumerate()
-        .group_by(|(_, c)| c.is_cube_rock())
-        .into_iter()
-    {
-        if i {
-            new_vec.extend(group.map(|(_, c)| c));
-        } else {
-            let this = group.collect::<Vec<_>>();
-            let round_rock_count = this.iter().filter(|(_, c)| c.is_rounded_rock()).count();
-
-            let round_rocks = (0..round_rock_count).map(|_| Cell::RoundedRock);
-            let empty_space = (0..this.len() - round_rock_count).map(|_| Cell::Empty);
-
-            match move_to {
-                MoveTo::Start => new_vec.extend(round_rocks.chain(empty_space)),
-                MoveTo::End => new_vec.extend(empty_space.chain(round_rocks)),
-            }
-        }
-    }
-
-    new_vec
-}
-
-fn calc_weight(col: Column) -> usize {
-    col.clone()
-        .into_iter()
-        .enumerate()
-        .filter(|(_, c)| c.is_rounded_rock())
-        .map(|(i, _)| col.len() - i)
-        .sum::<usize>()
+fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
+    assert!(!v.is_empty());
+    let len = v[0].len();
+    let mut iters: Vec<_> = v.into_iter().map(|n| n.into_iter()).collect();
+    (0..len)
+        .map(|_| {
+            iters
+                .iter_mut()
+                .map(|n| n.next().unwrap())
+                .collect::<Vec<T>>()
+        })
+        .collect()
 }
 
 fn parse_input() -> Space {
