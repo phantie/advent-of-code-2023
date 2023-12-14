@@ -77,34 +77,32 @@ enum MoveTo {
     End,
 }
 
-fn roll_rocks(cells: CellSeq, move_to: MoveTo) -> Column {
+fn roll_rocks(cells: CellSeq, move_to: MoveTo) -> CellSeq {
     use itertools::Itertools;
 
-    let mut new_vec = vec![];
-
-    for (i, group) in cells
+    cells
         .clone()
         .into_iter()
         .group_by(|c| c.is_cube_rock())
         .into_iter()
-    {
-        if i {
-            new_vec.extend(group);
-        } else {
-            let this = group.collect::<Vec<_>>();
-            let round_rock_count = this.iter().filter(|c| c.is_rounded_rock()).count();
+        .map(|(i, group)| -> Box<dyn Iterator<Item = Cell>> {
+            if i {
+                Box::new(group)
+            } else {
+                let group = group.collect::<Vec<_>>();
+                let round_rock_count = group.iter().filter(|c| c.is_rounded_rock()).count();
 
-            let round_rocks = (0..round_rock_count).map(|_| Cell::RoundedRock);
-            let empty_space = (0..this.len() - round_rock_count).map(|_| Cell::Empty);
+                let round_rocks = (0..round_rock_count).map(|_| Cell::RoundedRock);
+                let empty_space = (0..group.len() - round_rock_count).map(|_| Cell::Empty);
 
-            match move_to {
-                MoveTo::Start => new_vec.extend(round_rocks.chain(empty_space)),
-                MoveTo::End => new_vec.extend(empty_space.chain(round_rocks)),
+                match move_to {
+                    MoveTo::Start => Box::new(round_rocks.chain(empty_space)),
+                    MoveTo::End => Box::new(empty_space.chain(round_rocks)),
+                }
             }
-        }
-    }
-
-    new_vec
+        })
+        .flatten()
+        .collect()
 }
 
 fn space_weight(space: Space) -> usize {
@@ -194,19 +192,6 @@ fn parse_input() -> Space {
 
 fn input() -> &'static str {
     include_str!("../input.txt")
-}
-
-fn test_input() -> &'static str {
-    "O....#....
-O.OO#....#
-.....##...
-OO.#O....O
-.O.....O#.
-O.#..O.#.#
-..O..#O..O
-.......O..
-#....###..
-#OO..#...."
 }
 
 fn main() {
