@@ -30,13 +30,13 @@ fn focusing_power_of_lense_configuration(steps: Vec<Step>) -> usize {
     steps
         .into_iter()
         .fold(
-            (0..256).map(|_| vec![]).collect::<Vec<_>>(),
+            (0..256).map(|_| Vec::with_capacity(6)).collect(),
             |mut boxes: Vec<Vec<Lense>>, step| {
                 match step.operation {
                     Operation::Equals { focal_len } => {
                         match boxes[step.hash]
                             .iter()
-                            .position(|_step| _step.label == step.label)
+                            .position(|lense| lense.label == step.label)
                         {
                             None => boxes[step.hash].push(Lense {
                                 label: step.label,
@@ -48,7 +48,7 @@ fn focusing_power_of_lense_configuration(steps: Vec<Step>) -> usize {
                     Operation::Dash => {
                         match boxes[step.hash]
                             .iter()
-                            .position(|_step| _step.label == step.label)
+                            .position(|lense| lense.label == step.label)
                         {
                             None => {}
                             Some(i) => {
@@ -117,12 +117,12 @@ fn char_to_ascii_code(c: char) -> u32 {
     c as u32
 }
 
-fn parse_input(i: &str) -> impl Iterator<Item = &str> {
-    i.split(",")
+fn parse_steps(i: &str) -> impl Iterator<Item = Step> + '_ {
+    parse_input(i).map(|v| v.parse().unwrap())
 }
 
-fn parse_steps(i: &str) -> impl Iterator<Item = Step> + '_ {
-    i.split(",").map(|v| v.parse().unwrap())
+fn parse_input(i: &str) -> impl Iterator<Item = &str> {
+    i.split(",")
 }
 
 impl std::str::FromStr for Step {
@@ -147,8 +147,6 @@ impl std::str::FromStr for Step {
 fn input() -> &'static str {
     include_str!("../input.txt")
 }
-
-fn main() {}
 
 #[cfg(test)]
 mod tests {
@@ -175,3 +173,5 @@ mod tests {
         assert_eq!(focusing_power_of_lense_configuration(steps), 145);
     }
 }
+
+fn main() {}
