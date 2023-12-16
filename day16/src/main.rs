@@ -151,7 +151,7 @@ fn visit_from_direction(direction: Direction, visited_from_direction: &mut Visit
     }
 }
 
-fn tiles_energized(space: Space) -> usize {
+fn tiles_energized(space: Space, pos: Pos, direction: Direction) -> usize {
     fn explore_path(
         (mut space, mut unique_nodes): (Space, UniqueNodes),
         direction: Direction,
@@ -184,25 +184,13 @@ fn tiles_energized(space: Space) -> usize {
     type UniqueNodes = std::collections::HashSet<Pos>;
     let unique_nodes = UniqueNodes::new();
 
-    let pos = (0, -1);
-    let direction = Direction::Right;
     let (_space, unique_nodes) = explore_path((space, unique_nodes), direction, pos);
 
     unique_nodes.len()
 }
 
 fn main() {
-    // let input = test_input();
-    // let input = test_input_2();
-    // let q = input.map(parse_line).collect::<Space>();
-
-    let q = read_input()
-        .map(Result::unwrap)
-        .map(|l| parse_line(&l))
-        .collect::<Space>();
-
-    let r = tiles_energized(q);
-    dbg!(r);
+    part_two()
 }
 
 #[cfg(test)]
@@ -215,6 +203,8 @@ mod part_one {
                 .map(Result::unwrap)
                 .map(|l| parse_line(&l))
                 .collect::<Space>(),
+            (0, -1),
+            Direction::Right,
         )
     }
 
@@ -231,13 +221,13 @@ mod tests {
     #[test]
     fn test_test_input_tiles_energized() {
         let space = test_input().map(parse_line).collect::<Space>();
-        assert_eq!(tiles_energized(space), 46);
+        assert_eq!(tiles_energized(space, (0, -1), Direction::Right), 46);
     }
 
     #[test]
     fn test_test_input_2_tiles_energized() {
         let space = test_input_2().map(parse_line).collect::<Space>();
-        assert_eq!(tiles_energized(space), 5);
+        assert_eq!(tiles_energized(space, (0, -1), Direction::Right), 5);
     }
 
     #[cfg(test)]
@@ -261,4 +251,56 @@ mod tests {
 ..//.|...."#
             .lines()
     }
+}
+
+fn width(space: &Space) -> usize {
+    space[0].len()
+}
+
+fn height(space: &Space) -> usize {
+    space.len()
+}
+
+fn test_input() -> impl Iterator<Item = &'static str> {
+    r#".|...\....
+|.-.\.....
+.....|-...
+........|.
+..........
+.........\
+..../.\\..
+.-.-/..|..
+.|....-|.\
+..//.|...."#
+        .lines()
+}
+
+fn part_two() {
+    let input = test_input();
+    let space = input.map(parse_line).collect::<Space>();
+
+    let q = generate_starting_positions_directions(&space)
+        .into_iter()
+        .map(|(pos, direction)| tiles_energized(space.clone(), pos, direction))
+        .max();
+    dbg!(q);
+}
+
+fn generate_starting_positions_directions(space: &Space) -> Vec<(Pos, Direction)> {
+    let width = width(space) as isize;
+    let height = height(space) as isize;
+
+    use Direction::*;
+
+    let top = (0..width).map(|i| ((-1, i), Down));
+    let bottom = (0..width).map(|i| ((height, i), Up));
+
+    let left = (0..height).map(|j| ((j, -1), Right));
+    let right = (0..height).map(|j| ((j, width), Left));
+
+    top.clone()
+        .chain(bottom.clone())
+        .chain(left.clone())
+        .chain(right.clone())
+        .collect()
 }
