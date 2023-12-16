@@ -1,23 +1,3 @@
-fn test_input_2() -> impl Iterator<Item = &'static str> {
-    r#".|\
-.\/"#
-        .lines()
-}
-
-fn test_input() -> impl Iterator<Item = &'static str> {
-    r#".|...\....
-|.-.\.....
-.....|-...
-........|.
-..........
-.........\
-..../.\\..
-.-.-/..|..
-.|....-|.\
-..//.|...."#
-        .lines()
-}
-
 fn read_input() -> utils::ReadLines {
     let filename = "input.txt";
     utils::read_lines(filename).unwrap()
@@ -51,22 +31,22 @@ enum Direction {
 }
 
 type Space = Vec<Row>;
-type Row = Vec<(Cell, PassedFromSides)>;
+type Row = Vec<(Cell, VisitedFromDirection)>;
 
 type X = isize;
 type Y = isize;
 type Pos = (Y, X);
 
-type PassedFromUp = bool;
-type PassedFromDown = bool;
-type PassedFromLeft = bool;
-type PassedFromRight = bool;
+type VisitedFromUp = bool;
+type VisitedFromDown = bool;
+type VisitedFromLeft = bool;
+type VisitedFromRight = bool;
 
-type PassedFromSides = (
-    PassedFromUp,
-    PassedFromDown,
-    PassedFromLeft,
-    PassedFromRight,
+type VisitedFromDirection = (
+    VisitedFromUp,
+    VisitedFromDown,
+    VisitedFromLeft,
+    VisitedFromRight,
 );
 
 #[derive(Debug, Clone, Copy)]
@@ -109,12 +89,12 @@ fn move_to_direction((y, x): Pos, direction: Direction) -> Pos {
 fn next_directions(
     direction: Direction,
     encountered_cell: Cell,
-    passed_from_sides: PassedFromSides,
+    visited_from_direction: VisitedFromDirection,
 ) -> NextDirections {
     use Cell::*;
     use Direction::*;
     use NextDirections::Stop;
-    match (direction, encountered_cell, passed_from_sides) {
+    match (direction, encountered_cell, visited_from_direction) {
         (_, Empty, _) => direction.into(),
 
         (Left, _, (_, _, true, _)) => Stop,
@@ -146,7 +126,7 @@ fn next_directions(
     }
 }
 
-fn pick_space(space: &Space, (y, x): Pos) -> Option<(Cell, PassedFromSides)> {
+fn pick_space(space: &Space, (y, x): Pos) -> Option<(Cell, VisitedFromDirection)> {
     space
         .get(y as usize)
         .map(|row| row.get(x as usize))
@@ -154,20 +134,20 @@ fn pick_space(space: &Space, (y, x): Pos) -> Option<(Cell, PassedFromSides)> {
         .cloned()
 }
 
-fn pick_space_mut(space: &mut Space, (y, x): Pos) -> Option<&mut (Cell, PassedFromSides)> {
+fn pick_space_mut(space: &mut Space, (y, x): Pos) -> Option<&mut (Cell, VisitedFromDirection)> {
     space
         .get_mut(y as usize)
         .map(|row| row.get_mut(x as usize))
         .flatten()
 }
 
-fn passed_from_direction(direction: Direction, passed_from_sides: &mut PassedFromSides) {
+fn visit_from_direction(direction: Direction, visited_from_direction: &mut VisitedFromDirection) {
     use Direction::*;
     match direction {
-        Up => passed_from_sides.0 = true,
-        Down => passed_from_sides.1 = true,
-        Left => passed_from_sides.2 = true,
-        Right => passed_from_sides.3 = true,
+        Up => visited_from_direction.0 = true,
+        Down => visited_from_direction.1 = true,
+        Left => visited_from_direction.2 = true,
+        Right => visited_from_direction.3 = true,
     }
 }
 
@@ -180,26 +160,19 @@ fn tiles_energized(space: Space) -> usize {
         let initial_direction = direction;
         let pos = move_to_direction(pos, direction);
 
-        // match pick_space_mut(&mut space, pos) {
-        //     None => {}
-        //     Some((_, passed_from_sides)) => {
-        //         passed_from_direction(initial_direction, passed_from_sides);
-        //     }
-        // }
-
         match pick_space(&space, pos) {
             None => (space, unique_nodes),
-            Some((cell, passed_from_sides)) => {
+            Some((cell, visited_from_direction)) => {
                 unique_nodes.insert(pos);
-                match next_directions(direction, cell, passed_from_sides) {
+                match next_directions(direction, cell, visited_from_direction) {
                     NextDirections::One(direction) => {
-                        let (_, passed_from_sides) = pick_space_mut(&mut space, pos).unwrap();
-                        passed_from_direction(initial_direction, passed_from_sides);
+                        let (_, visited_from_direction) = pick_space_mut(&mut space, pos).unwrap();
+                        visit_from_direction(initial_direction, visited_from_direction);
                         explore_path((space, unique_nodes), direction, pos)
                     }
                     NextDirections::Split((d1, d2)) => {
-                        let (_, passed_from_sides) = pick_space_mut(&mut space, pos).unwrap();
-                        passed_from_direction(initial_direction, passed_from_sides);
+                        let (_, visited_from_direction) = pick_space_mut(&mut space, pos).unwrap();
+                        visit_from_direction(initial_direction, visited_from_direction);
                         explore_path(explore_path((space, unique_nodes), d1, pos), d2, pos)
                     }
                     NextDirections::Stop => (space, unique_nodes),
@@ -220,7 +193,6 @@ fn tiles_energized(space: Space) -> usize {
 
 fn main() {
     // let input = test_input();
-
     // let input = test_input_2();
     // let q = input.map(parse_line).collect::<Space>();
 
@@ -229,36 +201,64 @@ fn main() {
         .map(|l| parse_line(&l))
         .collect::<Space>();
 
-    // dbg!(q.len());
-    // dbg!(q[0].len());
-
-    // dbg!(&q);
-
     let r = tiles_energized(q);
     dbg!(r);
 }
 
-#[test]
-fn test_test_input_tiles_energized() {
-    let space = test_input().map(parse_line).collect::<Space>();
-    assert_eq!(tiles_energized(space), 46);
-}
+#[cfg(test)]
+mod part_one {
+    use super::*;
 
-#[test]
-fn test_input_tiles_energized() {
-    assert_eq!(
+    fn part_one() -> usize {
         tiles_energized(
             read_input()
                 .map(Result::unwrap)
                 .map(|l| parse_line(&l))
-                .collect::<Space>()
-        ),
-        8125
-    );
+                .collect::<Space>(),
+        )
+    }
+
+    #[test]
+    fn test_part_one() {
+        assert_eq!(part_one(), 8125);
+    }
 }
 
-#[test]
-fn test_test_input_2_tiles_energized() {
-    let space = test_input_2().map(parse_line).collect::<Space>();
-    assert_eq!(tiles_energized(space), 5);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_test_input_tiles_energized() {
+        let space = test_input().map(parse_line).collect::<Space>();
+        assert_eq!(tiles_energized(space), 46);
+    }
+
+    #[test]
+    fn test_test_input_2_tiles_energized() {
+        let space = test_input_2().map(parse_line).collect::<Space>();
+        assert_eq!(tiles_energized(space), 5);
+    }
+
+    #[cfg(test)]
+    fn test_input_2() -> impl Iterator<Item = &'static str> {
+        r#".|\
+.\/"#
+            .lines()
+    }
+
+    #[cfg(test)]
+    fn test_input() -> impl Iterator<Item = &'static str> {
+        r#".|...\....
+|.-.\.....
+.....|-...
+........|.
+..........
+.........\
+..../.\\..
+.-.-/..|..
+.|....-|.\
+..//.|...."#
+            .lines()
+    }
 }
