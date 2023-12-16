@@ -117,14 +117,6 @@ fn next_directions(
     match (direction, encountered_cell, passed_from_sides) {
         (_, Empty, _) => direction.into(),
 
-        (Right, HorizontalSplitter, (_, _, _, true)) => direction.into(),
-        (Left, HorizontalSplitter, (_, _, true, _)) => direction.into(),
-        // (Up, HorizontalSplitter, (true, _, _, _)) => (Left, Right).into(),
-        // (Down, HorizontalSplitter, (_, true, _, _)) => (Left, Right).into(),
-        (Up, VerticalSplitter, (true, _, _, _)) => direction.into(),
-        (Down, VerticalSplitter, (_, true, _, _)) => direction.into(),
-        // (Left, VerticalSplitter, (_, _, true, _)) => (Up, Down).into(),
-        // (Right, VerticalSplitter, (_, _, _, true)) => (Up, Down).into(),
         (Left, _, (_, _, true, _)) => Stop,
         (Right, _, (_, _, _, true)) => Stop,
         (Up, _, (true, _, _, _)) => Stop,
@@ -169,13 +161,31 @@ fn pick_space_mut(space: &mut Space, (y, x): Pos) -> Option<&mut (Cell, PassedFr
         .flatten()
 }
 
-fn tiles_energized(mut space: Space) -> usize {
+fn passed_from_direction(direction: Direction, passed_from_sides: &mut PassedFromSides) {
+    use Direction::*;
+    match direction {
+        Up => passed_from_sides.0 = true,
+        Down => passed_from_sides.1 = true,
+        Left => passed_from_sides.2 = true,
+        Right => passed_from_sides.3 = true,
+    }
+}
+
+fn tiles_energized(space: Space) -> usize {
     fn explore_path(
         (mut space, mut unique_nodes): (Space, UniqueNodes),
         direction: Direction,
         pos: Pos,
     ) -> (Space, UniqueNodes) {
+        let initial_direction = direction;
         let pos = move_to_direction(pos, direction);
+
+        // match pick_space_mut(&mut space, pos) {
+        //     None => {}
+        //     Some((_, passed_from_sides)) => {
+        //         passed_from_direction(initial_direction, passed_from_sides);
+        //     }
+        // }
 
         match pick_space(&space, pos) {
             None => (space, unique_nodes),
@@ -184,30 +194,15 @@ fn tiles_energized(mut space: Space) -> usize {
                 match next_directions(direction, cell, passed_from_sides) {
                     NextDirections::One(direction) => {
                         let (_, passed_from_sides) = pick_space_mut(&mut space, pos).unwrap();
-                        use Direction::*;
-                        match direction {
-                            Up => passed_from_sides.0 = true,
-                            Down => passed_from_sides.1 = true,
-                            Left => passed_from_sides.2 = true,
-                            Right => passed_from_sides.3 = true,
-                        }
+                        passed_from_direction(initial_direction, passed_from_sides);
                         explore_path((space, unique_nodes), direction, pos)
                     }
                     NextDirections::Split((d1, d2)) => {
                         let (_, passed_from_sides) = pick_space_mut(&mut space, pos).unwrap();
-                        use Direction::*;
-                        match direction {
-                            Up => passed_from_sides.0 = true,
-                            Down => passed_from_sides.1 = true,
-                            Left => passed_from_sides.2 = true,
-                            Right => passed_from_sides.3 = true,
-                        }
+                        passed_from_direction(initial_direction, passed_from_sides);
                         explore_path(explore_path((space, unique_nodes), d1, pos), d2, pos)
                     }
-                    NextDirections::Stop => {
-                        // println!("stop");
-                        (space, unique_nodes)
-                    }
+                    NextDirections::Stop => (space, unique_nodes),
                 }
             }
         }
@@ -219,7 +214,7 @@ fn tiles_energized(mut space: Space) -> usize {
     let pos = (0, -1);
     let direction = Direction::Right;
     let (_space, unique_nodes) = explore_path((space, unique_nodes), direction, pos);
-    dbg!(unique_nodes.len());
+
     unique_nodes.len()
 }
 
@@ -227,8 +222,6 @@ fn main() {
     // let input = test_input();
 
     // let input = test_input_2();
-    // let q = input.map(parse_line).collect::<Space>();
-
     // let q = input.map(parse_line).collect::<Space>();
 
     let q = read_input()
@@ -249,6 +242,19 @@ fn main() {
 fn test_test_input_tiles_energized() {
     let space = test_input().map(parse_line).collect::<Space>();
     assert_eq!(tiles_energized(space), 46);
+}
+
+#[test]
+fn test_input_tiles_energized() {
+    assert_eq!(
+        tiles_energized(
+            read_input()
+                .map(Result::unwrap)
+                .map(|l| parse_line(&l))
+                .collect::<Space>()
+        ),
+        8125
+    );
 }
 
 #[test]
