@@ -1,25 +1,47 @@
-fn read_input() -> utils::ReadLines {
-    let filename = "input.txt";
-    utils::read_lines(filename).unwrap()
-}
+#![allow(unused)]
 
-impl From<char> for Cell {
-    fn from(value: char) -> Self {
-        match value {
-            '.' => Self::Empty,
-            '-' => Self::HorizontalSplitter,
-            '|' => Self::VerticalSplitter,
-            '\\' => Self::DownwardSlopeMirror,
-            '/' => Self::UpwardSlopeMirror,
-            _ => unreachable!(),
-        }
+#[cfg(test)]
+mod part_one {
+    use super::*;
+
+    fn part_one() -> usize {
+        tiles_energized(
+            read_input()
+                .map(Result::unwrap)
+                .map(|l| parse_line(&l))
+                .collect::<Space>(),
+            (0, -1),
+            Direction::Right,
+        )
+    }
+
+    #[test]
+    fn test_part_one() {
+        assert_eq!(part_one(), 8125);
     }
 }
 
-fn parse_line(v: &str) -> Row {
-    v.chars()
-        .map(|c| (c.into(), (false, false, false, false)))
-        .collect()
+#[cfg(test)]
+mod part_two {
+    use super::*;
+
+    fn part_two() -> usize {
+        let space = read_input()
+            .map(Result::unwrap)
+            .map(|l| parse_line(&l))
+            .collect::<Space>();
+
+        generate_starting_positions_directions(&space)
+            .into_iter()
+            .map(|(pos, direction)| tiles_energized(space.clone(), pos, direction))
+            .max()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 8489);
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -56,6 +78,19 @@ enum Cell {
     VerticalSplitter,    /* | */
     DownwardSlopeMirror, /* \ */
     UpwardSlopeMirror,   /* / */
+}
+
+impl From<char> for Cell {
+    fn from(value: char) -> Self {
+        match value {
+            '.' => Self::Empty,
+            '-' => Self::HorizontalSplitter,
+            '|' => Self::VerticalSplitter,
+            '\\' => Self::DownwardSlopeMirror,
+            '/' => Self::UpwardSlopeMirror,
+            _ => unreachable!(),
+        }
+    }
 }
 
 enum NextDirections {
@@ -126,21 +161,6 @@ fn next_directions(
     }
 }
 
-fn pick_space(space: &Space, (y, x): Pos) -> Option<(Cell, VisitedFromDirection)> {
-    space
-        .get(y as usize)
-        .map(|row| row.get(x as usize))
-        .flatten()
-        .cloned()
-}
-
-fn pick_space_mut(space: &mut Space, (y, x): Pos) -> Option<&mut (Cell, VisitedFromDirection)> {
-    space
-        .get_mut(y as usize)
-        .map(|row| row.get_mut(x as usize))
-        .flatten()
-}
-
 fn visit_from_direction(direction: Direction, visited_from_direction: &mut VisitedFromDirection) {
     use Direction::*;
     match direction {
@@ -189,30 +209,46 @@ fn tiles_energized(space: Space, pos: Pos, direction: Direction) -> usize {
     unique_nodes.len()
 }
 
-fn main() {
-    part_two()
+fn generate_starting_positions_directions(space: &Space) -> Vec<(Pos, Direction)> {
+    let width = width(space) as isize;
+    let height = height(space) as isize;
+
+    use Direction::*;
+
+    let top = (0..width).map(|i| ((-1, i), Down));
+    let bottom = (0..width).map(|i| ((height, i), Up));
+
+    let left = (0..height).map(|j| ((j, -1), Right));
+    let right = (0..height).map(|j| ((j, width), Left));
+
+    top.clone()
+        .chain(bottom.clone())
+        .chain(left.clone())
+        .chain(right.clone())
+        .collect()
 }
 
-#[cfg(test)]
-mod part_one {
-    use super::*;
-
-    fn part_one() -> usize {
-        tiles_energized(
-            read_input()
-                .map(Result::unwrap)
-                .map(|l| parse_line(&l))
-                .collect::<Space>(),
-            (0, -1),
-            Direction::Right,
-        )
-    }
-
-    #[test]
-    fn test_part_one() {
-        assert_eq!(part_one(), 8125);
-    }
+fn pick_space(space: &Space, (y, x): Pos) -> Option<(Cell, VisitedFromDirection)> {
+    space
+        .get(y as usize)
+        .map(|row| row.get(x as usize))
+        .flatten()
+        .cloned()
 }
+
+fn pick_space_mut(space: &mut Space, (y, x): Pos) -> Option<&mut (Cell, VisitedFromDirection)> {
+    space
+        .get_mut(y as usize)
+        .map(|row| row.get_mut(x as usize))
+        .flatten()
+}
+
+fn read_input() -> utils::ReadLines {
+    let filename = "input.txt";
+    utils::read_lines(filename).unwrap()
+}
+
+fn main() {}
 
 #[cfg(test)]
 mod tests {
@@ -261,46 +297,8 @@ fn height(space: &Space) -> usize {
     space.len()
 }
 
-fn test_input() -> impl Iterator<Item = &'static str> {
-    r#".|...\....
-|.-.\.....
-.....|-...
-........|.
-..........
-.........\
-..../.\\..
-.-.-/..|..
-.|....-|.\
-..//.|...."#
-        .lines()
-}
-
-fn part_two() {
-    let input = test_input();
-    let space = input.map(parse_line).collect::<Space>();
-
-    let q = generate_starting_positions_directions(&space)
-        .into_iter()
-        .map(|(pos, direction)| tiles_energized(space.clone(), pos, direction))
-        .max();
-    dbg!(q);
-}
-
-fn generate_starting_positions_directions(space: &Space) -> Vec<(Pos, Direction)> {
-    let width = width(space) as isize;
-    let height = height(space) as isize;
-
-    use Direction::*;
-
-    let top = (0..width).map(|i| ((-1, i), Down));
-    let bottom = (0..width).map(|i| ((height, i), Up));
-
-    let left = (0..height).map(|j| ((j, -1), Right));
-    let right = (0..height).map(|j| ((j, width), Left));
-
-    top.clone()
-        .chain(bottom.clone())
-        .chain(left.clone())
-        .chain(right.clone())
+fn parse_line(v: &str) -> Row {
+    v.chars()
+        .map(|c| (c.into(), (false, false, false, false)))
         .collect()
 }
