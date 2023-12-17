@@ -1,4 +1,5 @@
 #![allow(unused)]
+// Modified https://doc.rust-lang.org/std/collections/binary_heap/index.html example
 
 mod part_one {
     use super::*;
@@ -17,6 +18,51 @@ mod part_one {
     #[test]
     fn test_part_one() {
         assert_eq!(part_one(), 1110);
+    }
+}
+
+mod part_two {
+    use super::*;
+
+    fn part_two() -> usize {
+        let input = input();
+        let space = parse_input(input);
+        shortest_path_two(
+            &space,
+            (0, 0),
+            ((height(&space) - 1) as _, (width(&space) - 1) as _),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn test_part_two_test_input() {
+        let input = test_input();
+        let space = parse_input(input);
+        assert_eq!(
+            shortest_path_two(
+                &space,
+                (0, 0),
+                ((height(&space) - 1) as _, (width(&space) - 1) as _),
+            )
+            .unwrap(),
+            94
+        );
+    }
+
+    #[test]
+    fn test_part_two_test_input_2() {
+        let input = test_input_2();
+        let space = parse_input(input);
+        assert_eq!(
+            shortest_path_two(
+                &space,
+                (0, 0),
+                ((height(&space) - 1) as _, (width(&space) - 1) as _),
+            )
+            .unwrap(),
+            71
+        );
     }
 }
 
@@ -74,16 +120,13 @@ struct DistKey {
 // for a simpler implementation.
 fn shortest_path(space: &Space, start: Pos, goal: Pos) -> Option<usize> {
     // dist[node] = current shortest distance from `start` to `node`
+    use strum::IntoEnumIterator;
+
     let mut dist = std::collections::HashMap::<DistKey, usize>::new();
 
     let mut heap = std::collections::BinaryHeap::new();
 
-    let directions = vec![
-        Direction::Up,
-        Direction::Down,
-        Direction::Left,
-        Direction::Right,
-    ];
+    let directions = Direction::iter().collect::<Vec<_>>();
 
     // We're at `start`, with a zero cost
     dist.insert(
@@ -157,7 +200,7 @@ fn shortest_path(space: &Space, start: Pos, goal: Pos) -> Option<usize> {
             };
 
             let dist_key = DistKey {
-                position: position,
+                position,
                 direction: _direction,
                 same_direction_streak: next.same_direction_streak,
             };
@@ -176,7 +219,116 @@ fn shortest_path(space: &Space, start: Pos, goal: Pos) -> Option<usize> {
     None
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// Dijkstra's shortest path algorithm.
+
+// Start at `start` and use `dist` to track the current shortest distance
+// to each node. This implementation isn't memory-efficient as it may leave duplicate
+// nodes in the queue. It also uses `usize::MAX` as a sentinel value,
+// for a simpler implementation.
+fn shortest_path_two(space: &Space, start: Pos, goal: Pos) -> Option<usize> {
+    // dist[node] = current shortest distance from `start` to `node`
+    use strum::IntoEnumIterator;
+
+    let mut dist = std::collections::HashMap::<DistKey, usize>::new();
+
+    let mut heap = std::collections::BinaryHeap::new();
+
+    let directions = Direction::iter().collect::<Vec<_>>();
+
+    // We're at `start`, with a zero cost
+    dist.insert(
+        DistKey {
+            position: start,
+            direction: Direction::Right,
+            same_direction_streak: 0,
+        },
+        0,
+    );
+    dist.insert(
+        DistKey {
+            position: start,
+            direction: Direction::Down,
+            same_direction_streak: 0,
+        },
+        0,
+    );
+    heap.push(State {
+        cost: 0,
+        position: start,
+        direction: Direction::Right,
+        same_direction_streak: 0,
+    });
+
+    // Examine the frontier with lower cost nodes first (min-heap)
+    while let Some(State {
+        cost,
+        position,
+        direction,
+        same_direction_streak,
+    }) = heap.pop()
+    {
+        // Alternatively we could have continued to find all shortest paths
+        if position == goal && same_direction_streak >= 4 {
+            return Some(cost);
+        }
+
+        // Important as we may have already found a better way
+        let dist_key = DistKey {
+            position,
+            direction,
+            same_direction_streak,
+        };
+        if dist.contains_key(&dist_key) && cost > dist[&dist_key] {
+            continue;
+        }
+
+        // For each node we can reach, see if we can find a way with
+        // a lower cost going through this node
+        for _direction in directions
+            .iter()
+            .map(Clone::clone)
+            .filter(|d| *d != direction.opposite())
+        {
+            let position = move_to_direction(position, _direction);
+            if let None = pick_space(space, position) {
+                continue;
+            }
+
+            let next = State {
+                position: position,
+                direction: _direction,
+                same_direction_streak: if _direction == direction {
+                    same_direction_streak + 1
+                } else {
+                    // Reset
+                    1
+                },
+                cost: cost + space[position.0 as usize][position.1 as usize],
+            };
+
+            let dist_key = DistKey {
+                position,
+                direction: _direction,
+                same_direction_streak: next.same_direction_streak,
+            };
+
+            // If so, add it to the frontier and continue
+            if (direction == _direction || same_direction_streak >= 4)
+                && next.same_direction_streak <= 10
+                && (!dist.contains_key(&dist_key) || next.cost < dist[&dist_key])
+            {
+                heap.push(next);
+                // Relaxation, we have now found a better way
+                dist.insert(dist_key, next.cost);
+            }
+        }
+    }
+
+    // Goal not reachable
+    None
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
 enum Direction {
     Up,
     Down,
@@ -258,16 +410,12 @@ fn test_input() -> &'static str {
 4322674655533"
 }
 
-fn main() {
-    // dbg!(parse_input(input()));
-
-    // let input = test_input();
-    let input = input();
-    let space = parse_input(input);
-    let q = shortest_path(
-        &space,
-        (0, 0),
-        ((height(&space) - 1) as _, (width(&space) - 1) as _),
-    );
-    dbg!(q);
+fn test_input_2() -> &'static str {
+    "111111111111
+999999999991
+999999999991
+999999999991
+999999999991"
 }
+
+fn main() {}
