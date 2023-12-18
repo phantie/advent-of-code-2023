@@ -47,7 +47,7 @@ mod part_one {
     fn part_one() -> usize {
         let steps = read_input()
             .map(Result::unwrap)
-            .map(|l| parse::process_line(&l))
+            .map(|l| parse::process_line(&l).fix())
             .collect::<Vec<_>>();
 
         let ring = walk_steps(steps);
@@ -128,6 +128,18 @@ enum Direction {
     Right,
 }
 
+impl From<char> for Direction {
+    fn from(value: char) -> Self {
+        match value {
+            'R' | '0' => Direction::Right,
+            'L' | '2' => Direction::Left,
+            'U' | '3' => Direction::Up,
+            'D' | '1' => Direction::Down,
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl Direction {
     pub fn move_pos(&self, (x, y): Pos, c: u32) -> Pos {
         let c = c as isize;
@@ -147,6 +159,14 @@ pub struct Step {
     color: String,
 }
 
+impl Step {
+    pub fn fix(mut self) -> Self {
+        self.n = u32::from_str_radix(&self.color[0..6], 16).unwrap();
+        self.direction = self.color.chars().last().unwrap().into();
+        self
+    }
+}
+
 fn read_input() -> utils::ReadLines {
     let filename = "input.txt";
     utils::read_lines(filename).unwrap()
@@ -161,13 +181,7 @@ mod parse {
     };
 
     fn parse_direction(input: &str) -> IResult<&str, Direction> {
-        let direction = match input.chars().into_iter().next().unwrap() {
-            'R' => Direction::Right,
-            'L' => Direction::Left,
-            'U' => Direction::Up,
-            'D' => Direction::Down,
-            _ => unreachable!(),
-        };
+        let direction = input.chars().into_iter().next().unwrap().into();
 
         let input = &input[1..];
 
