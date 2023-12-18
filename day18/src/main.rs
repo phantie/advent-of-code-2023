@@ -1,21 +1,50 @@
-fn main() {
-    let steps = read_input()
-        .map(Result::unwrap)
-        .map(|l| parse::process_line(&l))
-        .collect::<Vec<_>>();
+#![allow(unused)]
 
-    let ring = walk_steps(steps);
-    // let ring = walk_steps2(steps);
-    dbg!(ring.len());
-    dbg!(ring.first());
-    dbg!(ring.last());
-    // dbg!(&ring);
+mod part_one {
+    use super::*;
 
-    // let (_, max_y) = ring.clone().into_iter().max_by_key(|(x, y)| *y).unwrap();
-    // dbg!(max_y);
+    fn part_one() -> usize {
+        let steps = read_input()
+            .map(Result::unwrap)
+            .map(|l| parse::process_line(&l))
+            .collect::<Vec<_>>();
 
-    let total_area = ring
-        .clone()
+        let (perimeter, ring) = walk_steps(steps);
+
+        let total_area = total_area(&ring);
+
+        total_area + perimeter / 2 + 1
+    }
+
+    #[test]
+    fn test_part_one() {
+        assert_eq!(part_one(), 62365);
+    }
+}
+
+fn main() {}
+
+mod part_two {
+    use super::*;
+
+    fn part_two() -> usize {
+        let steps = read_input()
+            .map(Result::unwrap)
+            .map(|l| parse::process_line(&l).fix())
+            .collect::<Vec<_>>();
+        let (perimeter, ring) = walk_steps(steps);
+        let total_area = total_area(&ring);
+        total_area + perimeter / 2 + 1
+    }
+
+    #[test]
+    fn test_part_two() {
+        assert_eq!(part_two(), 159485361249806);
+    }
+}
+
+fn total_area(ring: &Vec<Pos>) -> usize {
+    ring.clone()
         .into_iter()
         .chain(std::iter::once(ring[0]))
         .collect::<Vec<_>>()
@@ -25,100 +54,32 @@ fn main() {
         .map(|window| {
             let ((x_l, y_l), (x_r, y_r)) = (window[0], window[1]);
 
-            (x_l * y_r) as i64 - (x_r * y_l) as i64
+            (x_l * y_r) - (x_r * y_l)
         })
-        .sum::<i64>() as usize
-        / 2;
-
-    // derived from https://en.wikipedia.org/wiki/Pick%27s_theorem
-    // A = i + b / 2 - 1
-    // i = A - b / 2 + 1
-    let inner = total_area - ring.len() / 2 + 1;
-    dbg!(inner);
-    // let r = total_area;
-    dbg!(ring.len());
-
-    dbg!(ring.len() + inner);
-}
-
-mod part_one {
-    use super::*;
-
-    fn part_one() -> usize {
-        let steps = read_input()
-            .map(Result::unwrap)
-            .map(|l| parse::process_line(&l).fix())
-            .collect::<Vec<_>>();
-
-        let ring = walk_steps(steps);
-
-        let total_area = ring
-            .clone()
-            .into_iter()
-            .chain(std::iter::once(ring[0]))
-            .collect::<Vec<_>>()
-            .as_slice()
-            .windows(2)
-            // https://en.wikipedia.org/wiki/Shoelace_formula, see Example
-            .map(|window| {
-                let ((x_l, y_l), (x_r, y_r)) = (window[0], window[1]);
-                (x_l * y_r) as i64 - (x_r * y_l) as i64
-            })
-            .sum::<i64>() as usize
-            / 2;
-
-        // derived from https://en.wikipedia.org/wiki/Pick%27s_theorem
-        // A = i + b / 2 - 1
-        // i = A - b / 2 + 1
-        let inner = total_area - ring.len() / 2 + 1;
-
-        // I have no idea why this time I have to do it differently
-        // formula derived from finding pattern in smaller input
-        ring.len() + inner
-    }
-
-    #[test]
-    fn test_part_one() {
-        assert_eq!(part_one(), 62365);
-    }
+        .sum::<isize>() as usize
+        / 2
 }
 
 type X = isize;
 type Y = isize;
 type Pos = (X, Y);
 
-fn walk_steps(steps: Steps) -> Vec<Pos> {
-    // let mut pos = (-1, 0);
+type Steps = Vec<Step>;
+type Perimeter = usize;
 
+fn walk_steps(steps: Steps) -> (Perimeter, Vec<Pos>) {
     let mut contour = vec![(0, 0)];
+    let mut perimeter = 0;
 
     for step in steps {
-        for _ in 0..step.n {
-            contour.push(step.direction.move_pos(*contour.last().unwrap(), 1));
-        }
-    }
-
-    // contour.remove(0);
-    contour.remove(contour.len() - 1);
-
-    // dbg!(contour);
-
-    contour
-}
-
-fn walk_steps2(steps: Steps) -> Vec<Pos> {
-    let mut contour = vec![(0, 0)];
-
-    for step in steps {
+        perimeter += step.n as usize;
         contour.push(step.direction.move_pos(*contour.last().unwrap(), step.n));
     }
 
     contour.remove(contour.len() - 1);
 
-    contour
+    (perimeter, contour)
 }
-
-type Steps = Vec<Step>;
 
 #[derive(Debug, Clone, Copy)]
 enum Direction {
@@ -159,9 +120,28 @@ pub struct Step {
     color: String,
 }
 
+#[allow(unused)]
+fn display_ring(ring: &Vec<Pos>) {
+    let existing = ring.iter().collect::<std::collections::HashSet<_>>();
+
+    let (_, max_y) = ring.clone().into_iter().max_by_key(|(x, y)| *y).unwrap();
+    let (max_x, _) = ring.clone().into_iter().max_by_key(|(x, y)| *x).unwrap();
+
+    for j in (0..max_y + 1) {
+        for i in (0..max_x + 1) {
+            if existing.contains(&(i, j)) {
+                print!("#");
+            } else {
+                print!(".");
+            }
+        }
+        println!()
+    }
+}
+
 impl Step {
     pub fn fix(mut self) -> Self {
-        self.n = u32::from_str_radix(&self.color[0..6], 16).unwrap();
+        self.n = u32::from_str_radix(&self.color[0..5], 16).unwrap();
         self.direction = self.color.chars().last().unwrap().into();
         self
     }
